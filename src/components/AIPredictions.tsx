@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { ArrowUpIcon, ArrowDownIcon, Brain } from "lucide-react";
 import { toast } from "sonner";
 
@@ -10,24 +10,72 @@ interface Prediction {
   price: number;
   timestamp: string;
   confidence: number;
+  support: number;
+  resistance: number;
 }
 
 const fetchPrediction = async (apiKey: string) => {
   try {
-    // First, fetch recent Bitcoin data for context
+    // Fetch more historical data for better analysis
     const historicalData = await fetch(
-      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=30&interval=daily"
+      "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily"
     );
     const data = await historicalData.json();
     
-    // Format historical data for the AI
-    const recentPrices = data.prices.map(([timestamp, price]: [number, number]) => ({
-      date: new Date(timestamp).toISOString().split('T')[0],
-      price: Math.round(price)
-    }));
+    // Format historical data with more technical indicators
+    const recentPrices = data.prices.map(([timestamp, price]: [number, number], index: number, array: any[]) => {
+      // Calculate 7-day moving average
+      const ma7 = index >= 6 
+        ? array.slice(index - 6, index + 1).reduce((sum: number, [, p]: [number, number]) => sum + p, 0) / 7 
+        : null;
+      
+      // Calculate 30-day moving average
+      const ma30 = index >= 29 
+        ? array.slice(index - 29, index + 1).reduce((sum: number, [, p]: [number, number]) => sum + p, 0) / 30 
+        : null;
 
-    // Prepare the prompt for the AI
-    const prompt = `Given this Bitcoin price data for the last 30 days: ${JSON.stringify(recentPrices)}, analyze the trend and predict the likely price movement for the next 7 days. Consider technical indicators, market sentiment, and historical patterns. Provide a detailed analysis with price predictions for each day and confidence levels. Format your response as JSON with this structure: { "prediction": [{ "price": number, "timestamp": "YYYY-MM-DD", "confidence": number }], "analysis": "string" }`;
+      return {
+        date: new Date(timestamp).toISOString().split('T')[0],
+        price: Math.round(price),
+        ma7: ma7 ? Math.round(ma7) : null,
+        ma30: ma30 ? Math.round(ma30) : null
+      };
+    });
+
+    // Enhanced prompt for more precise predictions
+    const prompt = `As a crypto market analysis AI, analyze this Bitcoin price data for the last 90 days, including 7-day and 30-day moving averages: ${JSON.stringify(recentPrices)}. 
+
+    Please provide:
+    1. A detailed technical analysis considering:
+       - Moving average convergence/divergence
+       - Support and resistance levels
+       - Volume trends
+       - Market sentiment
+       - Historical patterns
+       - Recent market events
+    
+    2. Price predictions for the next 7 days with:
+       - Daily price targets
+       - Support and resistance levels
+       - Confidence levels based on technical indicators
+       - Potential pivot points
+    
+    Format your response as JSON with this structure:
+    {
+      "prediction": [{
+        "price": number,
+        "timestamp": "YYYY-MM-DD",
+        "confidence": number,
+        "support": number,
+        "resistance": number
+      }],
+      "analysis": "string",
+      "keyIndicators": {
+        "trend": "bullish|bearish|neutral",
+        "strengthIndex": number,
+        "volatilityScore": number
+      }
+    }`;
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -40,14 +88,14 @@ const fetchPrediction = async (apiKey: string) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a crypto market analysis AI. Provide detailed price predictions with technical analysis.'
+            content: 'You are an expert crypto market analyst AI. Provide detailed technical analysis and precise price predictions based on multiple indicators.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1, // Lower temperature for more focused predictions
         max_tokens: 2000,
       }),
     });
@@ -61,7 +109,8 @@ const fetchPrediction = async (apiKey: string) => {
     
     return {
       predictions: parsedResponse.prediction,
-      analysis: parsedResponse.analysis
+      analysis: parsedResponse.analysis,
+      keyIndicators: parsedResponse.keyIndicators
     };
   } catch (error) {
     console.error('Error fetching prediction:', error);
@@ -125,6 +174,7 @@ const AIPredictions = () => {
           <div className="h-[300px] w-full mb-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.predictions}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#605F5B" />
                 <XAxis 
                   dataKey="timestamp" 
                   stroke="#E6E4DD"
@@ -142,7 +192,25 @@ const AIPredictions = () => {
                     borderRadius: '8px'
                   }}
                   labelStyle={{ color: '#E6E4DD' }}
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, 'Predicted Price']}
+                  formatter={(value: number, name: string) => {
+                    switch(name) {
+                      case 'price':
+                        return [`$${value.toLocaleString()}`, 'Predicted Price'];
+                      case 'support':
+                        return [`$${value.toLocaleString()}`, 'Support Level'];
+                      case 'resistance':
+                        return [`$${value.toLocaleString()}`, 'Resistance Level'];
+                      default:
+                        return [value, name];
+                    }
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="resistance" 
+                  stroke="#FF6B6B" 
+                  strokeDasharray="5 5"
+                  dot={false}
                 />
                 <Line 
                   type="monotone" 
@@ -150,6 +218,13 @@ const AIPredictions = () => {
                   stroke="#8989DE" 
                   strokeWidth={2}
                   dot={true}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="support" 
+                  stroke="#4CAF50" 
+                  strokeDasharray="5 5"
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
@@ -159,6 +234,28 @@ const AIPredictions = () => {
             <Card className="p-4">
               <h3 className="text-lg font-semibold mb-2">Analysis Summary</h3>
               <p className="text-muted-foreground">{data.analysis}</p>
+              {data.keyIndicators && (
+                <div className="mt-4 grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Trend</p>
+                    <p className={`font-semibold ${
+                      data.keyIndicators.trend === 'bullish' ? 'text-success' :
+                      data.keyIndicators.trend === 'bearish' ? 'text-warning' :
+                      'text-muted-foreground'
+                    }`}>
+                      {data.keyIndicators.trend.toUpperCase()}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Strength Index</p>
+                    <p className="font-semibold">{data.keyIndicators.strengthIndex}/100</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground">Volatility</p>
+                    <p className="font-semibold">{data.keyIndicators.volatilityScore}/100</p>
+                  </div>
+                </div>
+              )}
             </Card>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -181,6 +278,12 @@ const AIPredictions = () => {
                     <span className="text-lg font-semibold">
                       ${pred.price.toLocaleString()}
                     </span>
+                  </div>
+                  <div className="mt-2 text-sm">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Support: ${pred.support.toLocaleString()}</span>
+                      <span>Resistance: ${pred.resistance.toLocaleString()}</span>
+                    </div>
                   </div>
                 </Card>
               ))}
