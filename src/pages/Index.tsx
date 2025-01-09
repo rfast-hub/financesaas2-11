@@ -2,6 +2,7 @@ import MarketStats from "@/components/MarketStats";
 import CryptoChart from "@/components/CryptoChart";
 import PortfolioCard from "@/components/PortfolioCard";
 import CryptoList from "@/components/CryptoList";
+import AIPredictions from "@/components/AIPredictions";
 
 const Index = () => {
   return (
@@ -23,6 +24,7 @@ const Index = () => {
           </div>
         </div>
         
+        <AIPredictions />
         <CryptoList />
       </div>
     </div>
