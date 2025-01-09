@@ -12,11 +12,19 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Starting Bitcoin prediction request...');
+    
     // Fetch historical data
     const historicalData = await fetch(
       "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily"
     );
+    
+    if (!historicalData.ok) {
+      throw new Error(`Failed to fetch historical data: ${historicalData.statusText}`);
+    }
+    
     const data = await historicalData.json();
+    console.log('Successfully fetched historical data');
     
     // Format historical data with technical indicators
     const recentPrices = data.prices.map(([timestamp, price]: [number, number], index: number, array: any[]) => {
@@ -75,6 +83,7 @@ serve(async (req) => {
       throw new Error('Perplexity API key not found');
     }
 
+    console.log('Calling Perplexity API...');
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -99,9 +108,11 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
+      console.error('Perplexity API error:', response.statusText);
       throw new Error('Failed to get prediction from Perplexity');
     }
 
+    console.log('Successfully received Perplexity API response');
     const result = await response.json();
     const parsedResponse = JSON.parse(result.choices[0].message.content);
     
@@ -117,9 +128,12 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error in get-bitcoin-prediction function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.stack 
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
