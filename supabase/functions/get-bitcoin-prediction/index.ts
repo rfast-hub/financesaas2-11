@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import "https://deno.land/x/xhr@0.1.0/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,12 +15,22 @@ serve(async (req) => {
   try {
     console.log('Starting Bitcoin prediction request...');
     
+    // Test Perplexity API key
+    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
+    if (!PERPLEXITY_API_KEY) {
+      console.error('Perplexity API key not found in environment variables');
+      throw new Error('Perplexity API key not configured');
+    }
+    console.log('Perplexity API key found');
+    
     // Fetch historical data
+    console.log('Fetching historical data from CoinGecko...');
     const historicalData = await fetch(
       "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily"
     );
     
     if (!historicalData.ok) {
+      console.error('CoinGecko API error:', historicalData.status, historicalData.statusText);
       throw new Error(`Failed to fetch historical data: ${historicalData.statusText}`);
     }
     
@@ -78,11 +89,6 @@ serve(async (req) => {
       }
     }`;
 
-    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
-    if (!PERPLEXITY_API_KEY) {
-      throw new Error('Perplexity API key not found');
-    }
-
     console.log('Calling Perplexity API...');
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -108,13 +114,17 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      console.error('Perplexity API error:', response.statusText);
+      console.error('Perplexity API error:', response.status, response.statusText);
+      const errorText = await response.text();
+      console.error('Perplexity API error details:', errorText);
       throw new Error('Failed to get prediction from Perplexity');
     }
 
     console.log('Successfully received Perplexity API response');
     const result = await response.json();
+    console.log('Parsing Perplexity response...');
     const parsedResponse = JSON.parse(result.choices[0].message.content);
+    console.log('Successfully parsed response');
     
     return new Response(
       JSON.stringify({
@@ -132,7 +142,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        details: error.stack 
+        details: error.stack,
+        timestamp: new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
