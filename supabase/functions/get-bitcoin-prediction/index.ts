@@ -55,26 +55,25 @@ serve(async (req) => {
       };
     });
 
-    const prompt = `Analyze this Bitcoin price data and provide predictions in STRICT JSON format. DO NOT include any markdown or text outside the JSON structure.
-    
-    Historical data: ${JSON.stringify(recentPrices)}
-    
-    Return ONLY a JSON object with this exact structure, no other text:
-    {
-      "prediction": [{
-        "price": number,
-        "timestamp": "YYYY-MM-DD",
-        "confidence": number,
-        "support": number,
-        "resistance": number
-      }],
-      "analysis": "string",
-      "keyIndicators": {
-        "trend": "bullish" | "bearish" | "neutral",
-        "strengthIndex": number,
-        "volatilityScore": number
-      }
-    }`;
+    const prompt = `You are a JSON API. Return ONLY a pure JSON object without any markdown formatting, code blocks, or additional text. The response must be a valid JSON object matching this exact structure for Bitcoin price predictions:
+
+{
+  "prediction": [{
+    "price": number,
+    "timestamp": "YYYY-MM-DD",
+    "confidence": number,
+    "support": number,
+    "resistance": number
+  }],
+  "analysis": "string",
+  "keyIndicators": {
+    "trend": "bullish" | "bearish" | "neutral",
+    "strengthIndex": number,
+    "volatilityScore": number
+  }
+}
+
+Historical data for analysis: ${JSON.stringify(recentPrices)}`;
 
     console.log('Calling Perplexity API...');
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -88,7 +87,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a JSON-only API. Always respond with valid JSON objects, never include markdown or other text formats.'
+            content: 'You are a pure JSON API. Never include markdown, code blocks, or any text outside of the JSON structure. Return only valid JSON objects.'
           },
           {
             role: 'user',
@@ -109,11 +108,20 @@ serve(async (req) => {
 
     console.log('Successfully received Perplexity API response');
     const result = await response.json();
+    
+    // Log the raw response for debugging
     console.log('Raw Perplexity response:', result.choices[0].message.content);
     
     let parsedResponse;
     try {
-      parsedResponse = JSON.parse(result.choices[0].message.content);
+      // Clean the response of any markdown artifacts
+      const cleanContent = result.choices[0].message.content
+        .replace(/```json\n?/g, '')  // Remove ```json
+        .replace(/```\n?/g, '')      // Remove closing ```
+        .trim();                     // Remove any extra whitespace
+      
+      console.log('Cleaned content:', cleanContent);
+      parsedResponse = JSON.parse(cleanContent);
       
       // Validate response structure
       if (!parsedResponse.prediction || !Array.isArray(parsedResponse.prediction) || 
