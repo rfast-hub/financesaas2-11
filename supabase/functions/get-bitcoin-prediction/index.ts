@@ -55,24 +55,11 @@ serve(async (req) => {
       };
     });
 
-    const prompt = `As a crypto market analysis AI, analyze this Bitcoin price data for the last 90 days, including 7-day and 30-day moving averages: ${JSON.stringify(recentPrices)}. 
-
-    Please provide:
-    1. A detailed technical analysis considering:
-       - Moving average convergence/divergence
-       - Support and resistance levels
-       - Volume trends
-       - Market sentiment
-       - Historical patterns
-       - Recent market events
+    const prompt = `Analyze this Bitcoin price data and provide predictions in STRICT JSON format. DO NOT include any markdown or text outside the JSON structure.
     
-    2. Price predictions for the next 7 days with:
-       - Daily price targets
-       - Support and resistance levels
-       - Confidence levels based on technical indicators
-       - Potential pivot points
+    Historical data: ${JSON.stringify(recentPrices)}
     
-    Format your response as JSON with this structure:
+    Return ONLY a JSON object with this exact structure, no other text:
     {
       "prediction": [{
         "price": number,
@@ -83,7 +70,7 @@ serve(async (req) => {
       }],
       "analysis": "string",
       "keyIndicators": {
-        "trend": "bullish|bearish|neutral",
+        "trend": "bullish" | "bearish" | "neutral",
         "strengthIndex": number,
         "volatilityScore": number
       }
@@ -101,7 +88,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are an expert crypto market analyst AI. Provide detailed technical analysis and precise price predictions based on multiple indicators.'
+            content: 'You are a JSON-only API. Always respond with valid JSON objects, never include markdown or other text formats.'
           },
           {
             role: 'user',
@@ -122,8 +109,24 @@ serve(async (req) => {
 
     console.log('Successfully received Perplexity API response');
     const result = await response.json();
-    console.log('Parsing Perplexity response...');
-    const parsedResponse = JSON.parse(result.choices[0].message.content);
+    console.log('Raw Perplexity response:', result.choices[0].message.content);
+    
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(result.choices[0].message.content);
+      
+      // Validate response structure
+      if (!parsedResponse.prediction || !Array.isArray(parsedResponse.prediction) || 
+          !parsedResponse.analysis || typeof parsedResponse.analysis !== 'string' ||
+          !parsedResponse.keyIndicators || typeof parsedResponse.keyIndicators !== 'object') {
+        throw new Error('Invalid response structure from Perplexity API');
+      }
+    } catch (parseError) {
+      console.error('Failed to parse Perplexity response:', parseError);
+      console.error('Raw content:', result.choices[0].message.content);
+      throw new Error('Failed to parse prediction data: ' + parseError.message);
+    }
+    
     console.log('Successfully parsed response');
     
     return new Response(
