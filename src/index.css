@@ -4,12 +4,13 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-gradient-to-br from-background via-background/95 to-background/90 min-h-screen text-foreground antialiased;
   }
 }
 
 .glass-card {
-  @apply bg-secondary bg-opacity-20 backdrop-blur-lg border border-white border-opacity-10 shadow-lg;
+  @apply bg-secondary bg-opacity-20 backdrop-blur-lg border border-white/10 shadow-lg 
+    transition-all duration-300 hover:border-white/20 hover:shadow-xl hover:-translate-y-1;
 }
 
 .crypto-chart {
@@ -27,4 +28,12 @@
 
 .animate-pulse-subtle {
   animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.page-title {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary via-primary/80 to-primary font-bold;
+}
+
+.card-hover {
+  @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
 }

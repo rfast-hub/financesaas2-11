@@ -27,26 +27,32 @@ export default {
         primary: {
           DEFAULT: "#8989DE",
           foreground: "#FAFAF8",
+          hover: "#9B9BE5",
         },
         secondary: {
           DEFAULT: "#3A3935",
           foreground: "#FAFAF8",
+          hover: "#4A4945",
         },
         success: {
           DEFAULT: "#7EBF8E",
           foreground: "#FAFAF8",
+          hover: "#8ECF9E",
         },
         warning: {
           DEFAULT: "#D2886F",
           foreground: "#FAFAF8",
+          hover: "#E2987F",
         },
         muted: {
           DEFAULT: "#605F5B",
           foreground: "#E6E4DD",
+          hover: "#706F6B",
         },
         accent: {
           DEFAULT: "#8989DE",
           foreground: "#FAFAF8",
+          hover: "#9B9BE5",
         },
       },
       borderRadius: {
@@ -57,6 +63,8 @@ export default {
       animation: {
         "fade-in": "fade-in 0.5s ease-out",
         "slide-up": "slide-up 0.5s ease-out",
+        "scale-in": "scale-in 0.2s ease-out",
+        "slide-in-right": "slide-in-right 0.3s ease-out",
       },
       keyframes: {
         "fade-in": {
@@ -66,6 +74,14 @@ export default {
         "slide-up": {
           "0%": { transform: "translateY(10px)", opacity: "0" },
           "100%": { transform: "translateY(0)", opacity: "1" },
+        },
+        "scale-in": {
+          "0%": { transform: "scale(0.95)", opacity: "0" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "slide-in-right": {
+          "0%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(0)" },
         },
       },
     },
