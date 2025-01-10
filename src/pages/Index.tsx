@@ -5,7 +5,7 @@ import CryptoList from "@/components/CryptoList";
 import AIPredictions from "@/components/AIPredictions";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
-import { ChartLineUp, Wallet, Brain } from "lucide-react";
+import { ChartLine, Wallet, Brain } from "lucide-react";
 
 const Index = () => {
   return (
@@ -25,7 +25,7 @@ const Index = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
           <div className="lg:col-span-2 space-y-8">
             <div className="flex items-center gap-2 text-xl font-semibold text-primary mb-4">
-              <ChartLineUp className="w-6 h-6" />
+              <ChartLine className="w-6 h-6" />
               Market Overview
             </div>
             <CryptoChart />
