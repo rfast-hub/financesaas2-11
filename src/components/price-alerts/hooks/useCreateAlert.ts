@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 type AlertData = {
   cryptocurrency: string;
@@ -16,15 +17,25 @@ type AlertData = {
 export const useCreateAlert = (onSuccess: () => void) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: async (alertData: Omit<AlertData, "user_id">) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        throw new Error("Failed to get session");
+      }
+
+      if (!sessionData.session) {
+        // If no session, redirect to login
+        navigate("/login");
+        throw new Error("Please login to create alerts");
+      }
 
       const { data, error } = await supabase
         .from("price_alerts")
-        .insert([{ ...alertData, user_id: user.id }]);
+        .insert([{ ...alertData, user_id: sessionData.session.user.id }]);
 
       if (error) throw error;
       return data;
@@ -37,10 +48,10 @@ export const useCreateAlert = (onSuccess: () => void) => {
       });
       onSuccess();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: "Failed to create price alert. Please try again.",
+        description: error.message || "Failed to create price alert. Please try again.",
         variant: "destructive",
       });
       console.error("Error creating price alert:", error);
