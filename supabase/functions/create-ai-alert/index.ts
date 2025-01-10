@@ -7,27 +7,43 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const { cryptocurrency } = await req.json()
-
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
     )
 
-    // Get the user from the auth header
-    const authHeader = req.headers.get('Authorization')!
-    const user = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
-    if (!user.data.user) {
-      throw new Error('No user found')
+    // Get the JWT token from the request header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      throw new Error('No authorization header')
     }
 
+    // Verify the JWT and get the user
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    )
+
+    if (userError || !user) {
+      throw new Error('Invalid user token')
+    }
+
+    const { cryptocurrency } = await req.json()
+
     // Call Perplexity API for market analysis
+    console.log('Calling Perplexity API for market analysis...')
     const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
@@ -50,8 +66,16 @@ serve(async (req) => {
       }),
     })
 
+    if (!perplexityResponse.ok) {
+      console.error('Perplexity API error:', await perplexityResponse.text())
+      throw new Error('Failed to get market analysis')
+    }
+
     const aiResponse = await perplexityResponse.json()
+    console.log('AI Response:', aiResponse)
+    
     const analysis = JSON.parse(aiResponse.choices[0].message.content)
+    console.log('Parsed analysis:', analysis)
 
     // Create the AI-generated alert
     const { data: alert, error } = await supabaseClient
@@ -59,7 +83,7 @@ serve(async (req) => {
       .insert([
         {
           cryptocurrency,
-          user_id: user.data.user.id,
+          user_id: user.id,
           target_price: analysis.target_price,
           condition: analysis.condition,
           alert_type: 'price',
@@ -71,7 +95,10 @@ serve(async (req) => {
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      console.error('Database error:', error)
+      throw error
+    }
 
     return new Response(
       JSON.stringify({
@@ -84,6 +111,7 @@ serve(async (req) => {
       },
     )
   } catch (error) {
+    console.error('Error in create-ai-alert function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       {
