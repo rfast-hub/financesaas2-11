@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,94 +8,88 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const PERPLEXITY_API_KEY = Deno.env.get('PERPLEXITY_API_KEY');
-    if (!PERPLEXITY_API_KEY) {
-      throw new Error('Perplexity API key not configured');
+    const { cryptocurrency } = await req.json()
+
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+
+    // Get the user from the auth header
+    const authHeader = req.headers.get('Authorization')!
+    const user = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''))
+    if (!user.data.user) {
+      throw new Error('No user found')
     }
 
-    const { cryptocurrency } = await req.json();
-    
-    console.log('Creating AI alert for:', cryptocurrency);
-
-    // Get market analysis from Perplexity
-    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+    // Call Perplexity API for market analysis
+    const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+        'Authorization': `Bearer ${Deno.env.get('PERPLEXITY_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
+        model: 'llama-3.1-sonar-small-128k-online',
         messages: [
           {
             role: 'system',
-            content: 'You are a cryptocurrency market analyst. Analyze the current market conditions and suggest alert conditions. Keep responses concise and focused on actionable insights.'
+            content: 'You are a cryptocurrency market analyst. Analyze the current market conditions and suggest a price alert for the given cryptocurrency. Provide a target price and reasoning. Be specific and concise. Format your response as JSON with fields: target_price (number), condition (string: "above" or "below"), reasoning (string).'
           },
           {
             role: 'user',
-            content: `Analyze the current market conditions for ${cryptocurrency} and suggest specific price levels or conditions for setting alerts. Include a brief explanation of why these levels are significant.`
+            content: `Analyze ${cryptocurrency} and suggest a price alert based on current market conditions.`
           }
         ],
-        temperature: 0.7,
-        max_tokens: 2000,
+        temperature: 0.2,
       }),
-    });
+    })
 
-    if (!response.ok) {
-      console.error('Perplexity API error:', response.status, response.statusText);
-      throw new Error('Failed to get response from Perplexity');
-    }
+    const aiResponse = await perplexityResponse.json()
+    const analysis = JSON.parse(aiResponse.choices[0].message.content)
 
-    const result = await response.json();
-    const analysis = result.choices[0].message.content;
-
-    // Create alerts based on AI analysis
-    const { data: { user } } = await supabase.auth.getUser({ req });
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    // Extract price levels from AI analysis and create alerts
-    // This is a simple implementation - you might want to use more sophisticated parsing
-    const priceMatch = analysis.match(/\$[\d,]+\.?\d*/);
-    if (priceMatch) {
-      const suggestedPrice = parseFloat(priceMatch[0].replace(/[$,]/g, ''));
-      
-      await supabase.from('price_alerts').insert([
+    // Create the AI-generated alert
+    const { data: alert, error } = await supabaseClient
+      .from('price_alerts')
+      .insert([
         {
           cryptocurrency,
-          target_price: suggestedPrice,
-          condition: 'above',
-          user_id: user.id,
-          email_notification: true,
+          user_id: user.data.user.id,
+          target_price: analysis.target_price,
+          condition: analysis.condition,
+          alert_type: 'price',
           ai_generated: true,
-          ai_reasoning: analysis
+          ai_reasoning: analysis.reasoning,
+          email_notification: true,
         }
-      ]);
-    }
-    
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+
     return new Response(
-      JSON.stringify({ 
-        message: "AI alert created successfully",
-        analysis 
+      JSON.stringify({
+        message: `AI Alert created with target price $${analysis.target_price} when price goes ${analysis.condition} based on market analysis`,
+        alert
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
-      }
-    );
+        status: 200,
+      },
+    )
   } catch (error) {
-    console.error('Error in create-ai-alert function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
-      }
-    );
+        status: 400,
+      },
+    )
   }
 })

@@ -18,6 +18,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+type AlertData = {
+  cryptocurrency: string;
+  user_id: string;
+  condition: string;
+  email_notification: boolean;
+  alert_type: string;
+  target_price?: number;
+  percentage_change?: number;
+  volume_threshold?: number;
+};
+
 export const AlertForm = () => {
   const [cryptocurrency, setCryptocurrency] = useState("BTC");
   const [targetPrice, setTargetPrice] = useState("");
@@ -33,7 +44,7 @@ export const AlertForm = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const alertData = {
+      const alertData: AlertData = {
         cryptocurrency,
         user_id: user.id,
         condition,
