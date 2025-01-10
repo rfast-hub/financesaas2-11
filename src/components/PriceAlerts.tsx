@@ -30,9 +30,13 @@ const PriceAlerts = () => {
   const { data: alerts, isLoading } = useQuery({
     queryKey: ["price-alerts"],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase
         .from("price_alerts")
         .select("*")
+        .eq('user_id', user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -42,12 +46,16 @@ const PriceAlerts = () => {
 
   const createAlert = useMutation({
     mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
       const { data, error } = await supabase.from("price_alerts").insert([
         {
           cryptocurrency,
           target_price: parseFloat(targetPrice),
           condition,
           email_notification: true,
+          user_id: user.id,
         },
       ]);
 
