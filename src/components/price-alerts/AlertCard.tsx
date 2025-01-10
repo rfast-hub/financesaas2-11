@@ -10,7 +10,7 @@ interface AlertCardProps {
     id: string;
     cryptocurrency: string;
     condition: string;
-    target_price: number;
+    target_price: number | null;
     created_at: string;
   };
 }
@@ -48,12 +48,17 @@ export const AlertCard = ({ alert }: AlertCardProps) => {
     },
   });
 
+  const formatPrice = (price: number | null) => {
+    if (price === null) return "N/A";
+    return price.toLocaleString();
+  };
+
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
       <div>
         <p className="font-medium">
           {alert.cryptocurrency} {alert.condition} $
-          {alert.target_price.toLocaleString()}
+          {formatPrice(alert.target_price)}
         </p>
         <p className="text-sm text-muted-foreground">
           Created on {new Date(alert.created_at!).toLocaleDateString()}
