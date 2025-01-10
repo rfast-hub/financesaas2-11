@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Brain } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,22 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
-type AlertData = {
-  cryptocurrency: string;
-  user_id: string;
-  condition: string;
-  email_notification: boolean;
-  alert_type: string;
-  target_price?: number;
-  percentage_change?: number;
-  volume_threshold?: number;
-};
+import { PriceAlertFields } from "./alert-types/PriceAlertFields";
+import { PercentageAlertField } from "./alert-types/PercentageAlertField";
+import { VolumeAlertField } from "./alert-types/VolumeAlertField";
+import { AIAlertButton } from "./AIAlertButton";
+import { useCreateAlert } from "./hooks/useCreateAlert";
 
 export const AlertForm = () => {
   const [cryptocurrency, setCryptocurrency] = useState("BTC");
@@ -37,97 +23,14 @@ export const AlertForm = () => {
   const [percentage, setPercentage] = useState("");
   const [volume, setVolume] = useState("");
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  const createAlert = useMutation({
-    mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      const alertData: AlertData = {
-        cryptocurrency,
-        user_id: user.id,
-        condition,
-        email_notification: true,
-        alert_type: alertType,
-      };
-
-      // Add specific fields based on alert type
-      if (alertType === "price") {
-        alertData.target_price = parseFloat(targetPrice);
-      } else if (alertType === "percentage") {
-        alertData.percentage_change = parseFloat(percentage);
-      } else if (alertType === "volume") {
-        alertData.volume_threshold = parseFloat(volume);
-      }
-
-      const { data, error } = await supabase
-        .from("price_alerts")
-        .insert([alertData]);
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
-      toast({
-        title: "Success",
-        description: "Price alert created successfully!",
-      });
-      resetForm();
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to create price alert. Please try again.",
-        variant: "destructive",
-      });
-      console.error("Error creating price alert:", error);
-    },
-  });
-
-  const createAIAlert = useMutation({
-    mutationFn: async () => {
-      // First check if user is authenticated
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
-
-      // Get the session for the auth token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("No active session");
-
-      const { data, error } = await supabase.functions.invoke("create-ai-alert", {
-        body: { cryptocurrency },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
-      toast({
-        title: "AI Alert Created",
-        description: data.message || "AI-powered alert created successfully!",
-      });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to create AI alert. Please try again.",
-        variant: "destructive",
-      });
-      console.error("Error creating AI alert:", error);
-    },
-  });
 
   const resetForm = () => {
     setTargetPrice("");
     setPercentage("");
     setVolume("");
   };
+
+  const createAlert = useCreateAlert(resetForm);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,7 +62,17 @@ export const AlertForm = () => {
       return;
     }
 
-    createAlert.mutate();
+    const alertData = {
+      cryptocurrency,
+      condition,
+      email_notification: true,
+      alert_type: alertType,
+      ...(alertType === "price" && { target_price: parseFloat(targetPrice) }),
+      ...(alertType === "percentage" && { percentage_change: parseFloat(percentage) }),
+      ...(alertType === "volume" && { volume_threshold: parseFloat(volume) }),
+    };
+
+    createAlert.mutate(alertData);
   };
 
   return (
@@ -198,47 +111,25 @@ export const AlertForm = () => {
         </Select>
 
         {alertType === "price" && (
-          <>
-            <Select
-              value={condition}
-              onValueChange={setCondition}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select condition" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="above">Price goes above</SelectItem>
-                <SelectItem value="below">Price goes below</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Input
-              type="number"
-              placeholder="Target price"
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="w-[180px]"
-            />
-          </>
+          <PriceAlertFields
+            targetPrice={targetPrice}
+            condition={condition}
+            onTargetPriceChange={setTargetPrice}
+            onConditionChange={setCondition}
+          />
         )}
 
         {alertType === "percentage" && (
-          <Input
-            type="number"
-            placeholder="Percentage change"
-            value={percentage}
-            onChange={(e) => setPercentage(e.target.value)}
-            className="w-[180px]"
+          <PercentageAlertField
+            percentage={percentage}
+            onPercentageChange={setPercentage}
           />
         )}
 
         {alertType === "volume" && (
-          <Input
-            type="number"
-            placeholder="Volume threshold"
-            value={volume}
-            onChange={(e) => setVolume(e.target.value)}
-            className="w-[180px]"
+          <VolumeAlertField
+            volume={volume}
+            onVolumeChange={setVolume}
           />
         )}
 
@@ -251,26 +142,7 @@ export const AlertForm = () => {
             )}
           </Button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => createAIAlert.mutate()}
-                disabled={createAIAlert.isPending}
-              >
-                {createAIAlert.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Brain className="h-4 w-4" />
-                )}
-                <span className="ml-2">AI Alert</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Create an AI-powered alert based on market analysis
-            </TooltipContent>
-          </Tooltip>
+          <AIAlertButton cryptocurrency={cryptocurrency} />
         </div>
       </div>
     </form>
