@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Brain } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,11 +12,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const AlertForm = () => {
   const [cryptocurrency, setCryptocurrency] = useState("BTC");
   const [targetPrice, setTargetPrice] = useState("");
   const [condition, setCondition] = useState("above");
+  const [alertType, setAlertType] = useState("price");
+  const [percentage, setPercentage] = useState("");
+  const [volume, setVolume] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -25,15 +33,26 @@ export const AlertForm = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
-      const { data, error } = await supabase.from("price_alerts").insert([
-        {
-          cryptocurrency,
-          target_price: parseFloat(targetPrice),
-          condition,
-          email_notification: true,
-          user_id: user.id,
-        },
-      ]);
+      const alertData = {
+        cryptocurrency,
+        user_id: user.id,
+        condition,
+        email_notification: true,
+        alert_type: alertType,
+      };
+
+      // Add specific fields based on alert type
+      if (alertType === "price") {
+        alertData.target_price = parseFloat(targetPrice);
+      } else if (alertType === "percentage") {
+        alertData.percentage_change = parseFloat(percentage);
+      } else if (alertType === "volume") {
+        alertData.volume_threshold = parseFloat(volume);
+      }
+
+      const { data, error } = await supabase
+        .from("price_alerts")
+        .insert([alertData]);
 
       if (error) throw error;
       return data;
@@ -44,7 +63,7 @@ export const AlertForm = () => {
         title: "Success",
         description: "Price alert created successfully!",
       });
-      setTargetPrice("");
+      resetForm();
     },
     onError: (error) => {
       toast({
@@ -56,9 +75,45 @@ export const AlertForm = () => {
     },
   });
 
+  const createAIAlert = useMutation({
+    mutationFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data, error } = await supabase.functions.invoke("create-ai-alert", {
+        body: { cryptocurrency }
+      });
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
+      toast({
+        title: "AI Alert Created",
+        description: data.message || "AI-powered alert created successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to create AI alert. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Error creating AI alert:", error);
+    },
+  });
+
+  const resetForm = () => {
+    setTargetPrice("");
+    setPercentage("");
+    setVolume("");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!targetPrice || isNaN(parseFloat(targetPrice))) {
+    
+    if (alertType === "price" && (!targetPrice || isNaN(parseFloat(targetPrice)))) {
       toast({
         title: "Error",
         description: "Please enter a valid target price",
@@ -66,12 +121,31 @@ export const AlertForm = () => {
       });
       return;
     }
+
+    if (alertType === "percentage" && (!percentage || isNaN(parseFloat(percentage)))) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid percentage",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (alertType === "volume" && (!volume || isNaN(parseFloat(volume)))) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid volume threshold",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createAlert.mutate();
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex gap-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex gap-4 flex-wrap">
         <Select
           value={cryptocurrency}
           onValueChange={setCryptocurrency}
@@ -88,33 +162,97 @@ export const AlertForm = () => {
         </Select>
 
         <Select
-          value={condition}
-          onValueChange={setCondition}
+          value={alertType}
+          onValueChange={(value) => {
+            setAlertType(value);
+            resetForm();
+          }}
         >
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select condition" />
+            <SelectValue placeholder="Alert type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="above">Price goes above</SelectItem>
-            <SelectItem value="below">Price goes below</SelectItem>
+            <SelectItem value="price">Price Alert</SelectItem>
+            <SelectItem value="percentage">Percentage Change</SelectItem>
+            <SelectItem value="volume">Volume Alert</SelectItem>
           </SelectContent>
         </Select>
 
-        <Input
-          type="number"
-          placeholder="Target price"
-          value={targetPrice}
-          onChange={(e) => setTargetPrice(e.target.value)}
-          className="w-[180px]"
-        />
+        {alertType === "price" && (
+          <>
+            <Select
+              value={condition}
+              onValueChange={setCondition}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="above">Price goes above</SelectItem>
+                <SelectItem value="below">Price goes below</SelectItem>
+              </SelectContent>
+            </Select>
 
-        <Button type="submit" disabled={createAlert.isPending}>
-          {createAlert.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Create Alert"
-          )}
-        </Button>
+            <Input
+              type="number"
+              placeholder="Target price"
+              value={targetPrice}
+              onChange={(e) => setTargetPrice(e.target.value)}
+              className="w-[180px]"
+            />
+          </>
+        )}
+
+        {alertType === "percentage" && (
+          <Input
+            type="number"
+            placeholder="Percentage change"
+            value={percentage}
+            onChange={(e) => setPercentage(e.target.value)}
+            className="w-[180px]"
+          />
+        )}
+
+        {alertType === "volume" && (
+          <Input
+            type="number"
+            placeholder="Volume threshold"
+            value={volume}
+            onChange={(e) => setVolume(e.target.value)}
+            className="w-[180px]"
+          />
+        )}
+
+        <div className="flex gap-2">
+          <Button type="submit" disabled={createAlert.isPending}>
+            {createAlert.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Create Alert"
+            )}
+          </Button>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => createAIAlert.mutate()}
+                disabled={createAIAlert.isPending}
+              >
+                {createAIAlert.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Brain className="h-4 w-4" />
+                )}
+                <span className="ml-2">AI Alert</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Create an AI-powered alert based on market analysis
+            </TooltipContent>
+          </Tooltip>
+        </div>
       </div>
     </form>
   );
