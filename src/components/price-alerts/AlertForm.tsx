@@ -88,11 +88,19 @@ export const AlertForm = () => {
 
   const createAIAlert = useMutation({
     mutationFn: async () => {
+      // First check if user is authenticated
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Get the session for the auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No active session");
+
       const { data, error } = await supabase.functions.invoke("create-ai-alert", {
-        body: { cryptocurrency }
+        body: { cryptocurrency },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       });
 
       if (error) throw error;
