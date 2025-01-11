@@ -15,12 +15,20 @@
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: https: blob:;
     connect-src 'self' https://szxbgwsxosazuvkxlmdx.supabase.co https://api.coingecko.com wss://ws.tradingview.com;
-    frame-src 'self' https://s.tradingview.com;" />
+    frame-src 'self' https://s.tradingview.com;
+    form-action 'self';
+    base-uri 'self';
+    object-src 'none';
+    worker-src 'self' blob:;" />
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta http-equiv="X-Frame-Options" content="SAMEORIGIN" />
   <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
-  <meta http-equiv="Permissions-Policy" content="geolocation=(), camera=(), microphone=()" />
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), camera=(), microphone=(), payment=(), usb=(), bluetooth=(), ambient-light-sensor=(), accelerometer=(), gyroscope=()" />
+  <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+  <meta http-equiv="Cross-Origin-Resource-Policy" content="same-site" />
+  <meta http-equiv="Clear-Site-Data" content="cache" />
 </head>
 
 <body>
