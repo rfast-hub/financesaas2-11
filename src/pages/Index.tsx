@@ -78,6 +78,10 @@ const Index = () => {
             <SubscriptionManagement />
           </div>
         </div>
+
+        <footer className="text-center py-4 text-sm text-muted-foreground">
+          © {new Date().getFullYear()} CryptoTrack. All rights reserved.
+        </footer>
       </div>
     </div>
   );
