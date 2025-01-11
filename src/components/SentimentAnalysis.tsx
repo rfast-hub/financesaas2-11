@@ -1,5 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Brain, TrendingUp, TrendingDown, MinusCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SentimentData {
   overallSentiment: 'bullish' | 'bearish' | 'neutral';
@@ -8,14 +10,19 @@ interface SentimentData {
   trendStrength: number;
 }
 
-const mockSentimentData: SentimentData = {
-  overallSentiment: 'bullish',
-  sentimentScore: 75,
-  socialMediaMentions: 15420,
-  trendStrength: 82,
-};
+const fetchSentimentData = async (): Promise<SentimentData> => {
+  const { data, error } = await supabase.functions.invoke('get-market-sentiment')
+  if (error) throw error
+  return data
+}
 
 const SentimentAnalysis = () => {
+  const { data: sentimentData, isLoading, error } = useQuery({
+    queryKey: ['marketSentiment'],
+    queryFn: fetchSentimentData,
+    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+  });
+
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case 'bullish':
@@ -33,6 +40,30 @@ const SentimentAnalysis = () => {
     return 'text-muted-foreground';
   };
 
+  if (isLoading) {
+    return (
+      <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
+        <div className="flex items-center gap-2">
+          <Brain className="w-6 h-6" />
+          <h2 className="text-xl font-semibold">Loading sentiment data...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
+        <div className="flex items-center gap-2 text-warning">
+          <Brain className="w-6 h-6" />
+          <h2 className="text-xl font-semibold">Error loading sentiment data</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (!sentimentData) return null;
+
   return (
     <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
       <div className="flex items-center justify-between mb-6">
@@ -46,10 +77,10 @@ const SentimentAnalysis = () => {
         <Card className="p-4">
           <div className="flex items-center justify-between mb-4">
             <span className="text-muted-foreground">Overall Sentiment</span>
-            {getSentimentIcon(mockSentimentData.overallSentiment)}
+            {getSentimentIcon(sentimentData.overallSentiment)}
           </div>
           <div className="text-2xl font-bold capitalize">
-            {mockSentimentData.overallSentiment}
+            {sentimentData.overallSentiment}
           </div>
         </Card>
 
@@ -57,8 +88,8 @@ const SentimentAnalysis = () => {
           <div className="flex items-center justify-between mb-4">
             <span className="text-muted-foreground">Sentiment Score</span>
           </div>
-          <div className={`text-2xl font-bold ${getSentimentColor(mockSentimentData.sentimentScore)}`}>
-            {mockSentimentData.sentimentScore}%
+          <div className={`text-2xl font-bold ${getSentimentColor(sentimentData.sentimentScore)}`}>
+            {sentimentData.sentimentScore}%
           </div>
         </Card>
 
@@ -67,7 +98,7 @@ const SentimentAnalysis = () => {
             <span className="text-muted-foreground">Social Media Activity</span>
           </div>
           <div className="text-2xl font-bold">
-            {mockSentimentData.socialMediaMentions.toLocaleString()}
+            {sentimentData.socialMediaMentions.toLocaleString()}
           </div>
           <div className="text-sm text-muted-foreground">mentions in 24h</div>
         </Card>
@@ -76,8 +107,8 @@ const SentimentAnalysis = () => {
           <div className="flex items-center justify-between mb-4">
             <span className="text-muted-foreground">Trend Strength</span>
           </div>
-          <div className={`text-2xl font-bold ${getSentimentColor(mockSentimentData.trendStrength)}`}>
-            {mockSentimentData.trendStrength}%
+          <div className={`text-2xl font-bold ${getSentimentColor(sentimentData.trendStrength)}`}>
+            {sentimentData.trendStrength}%
           </div>
         </Card>
       </div>
