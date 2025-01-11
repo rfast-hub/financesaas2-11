@@ -8,24 +8,20 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Initialize Stripe with the secret key
     const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
       apiVersion: '2023-10-16',
     })
 
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     )
 
-    // Get the user from the auth header
     const authHeader = req.headers.get('Authorization')!
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
@@ -52,9 +48,34 @@ serve(async (req) => {
 
     console.log('Found subscription:', subscriptionData.subscription_id)
 
-    // Cancel the subscription in Stripe
+    // First, retrieve the Stripe subscription to check its status
+    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionData.subscription_id)
+    
+    if (stripeSubscription.status === 'canceled') {
+      console.log('Subscription already canceled in Stripe')
+      // Update our database to reflect this
+      await supabaseClient
+        .from('subscriptions')
+        .update({
+          status: 'canceled',
+          is_active: false,
+          canceled_at: new Date().toISOString(),
+        })
+        .eq('subscription_id', subscriptionData.subscription_id)
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: 'Subscription was already canceled'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Cancel the subscription in Stripe immediately
     const canceledSubscription = await stripe.subscriptions.cancel(subscriptionData.subscription_id, {
       cancel_at_period_end: false, // This makes it take effect immediately
+      prorate: true, // This will refund the unused portion if applicable
     })
 
     console.log('Stripe subscription canceled:', canceledSubscription.id)
@@ -80,14 +101,9 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         subscription: canceledSubscription,
-        message: 'Subscription successfully canceled'
+        message: 'Subscription successfully canceled and billing stopped immediately'
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        } 
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Error canceling subscription:', error)
