@@ -1,4 +1,4 @@
-import TradingViewWidget from 'react-tradingview-widget';
+import { AdvancedRealTimeChart } from "react-ts-tradingview-widgets";
 
 const CryptoChart = () => {
   return (
@@ -7,7 +7,7 @@ const CryptoChart = () => {
         <h2 className="text-xl font-semibold">Bitcoin Price</h2>
       </div>
       <div className="h-[400px] w-full">
-        <TradingViewWidget
+        <AdvancedRealTimeChart
           symbol="BINANCE:BTCUSDT"
           theme="dark"
           locale="en"
