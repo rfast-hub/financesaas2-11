@@ -1,22 +1,16 @@
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const fetchCryptoData = async () => {
   try {
-    const response = await fetch(
-      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false',
-      {
-        headers: {
-          'Accept': 'application/json',
-        },
-      }
-    );
+    const { data, error } = await supabase.functions.invoke('get-crypto-data', {
+      body: { limit: 5 }
+    });
     
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response.json();
+    if (error) throw new Error(error.message);
+    return data;
   } catch (error) {
     console.error('Error fetching crypto data:', error);
     throw new Error('Failed to fetch cryptocurrency data. Please try again later.');
