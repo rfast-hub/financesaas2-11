@@ -15,21 +15,32 @@ async function processAlert(alert: PriceAlert): Promise<boolean> {
     console.log(`Processing alert for ${alert.cryptocurrency}:`, alert);
     
     const cryptoData = await getCryptoData(alert.cryptocurrency);
-    console.log(`Fetched crypto data:`, cryptoData);
+    console.log(`Current crypto data for ${alert.cryptocurrency}:`, {
+      current_price: cryptoData.current_price,
+      target_price: alert.target_price,
+      condition: alert.condition,
+      alert_type: alert.alert_type
+    });
     
     if (isAlertTriggered(alert, cryptoData)) {
-      console.log(`Alert ${alert.id} triggered!`);
+      console.log(`Alert ${alert.id} triggered! Current price: ${cryptoData.current_price}, Target: ${alert.target_price}`);
       
       if (alert.email_notification) {
         const userEmail = await getUserEmail(alert.user_id);
         if (userEmail) {
+          console.log(`Sending email notification to ${userEmail}`);
           await sendEmailAlert(userEmail, alert, cryptoData);
-          console.log(`Email sent to ${userEmail} for alert ${alert.id}`);
+          console.log(`Email sent successfully to ${userEmail} for alert ${alert.id}`);
+        } else {
+          console.error(`No email found for user ${alert.user_id}`);
         }
       }
 
       await markAlertAsTriggered(alert.id);
+      console.log(`Alert ${alert.id} marked as triggered`);
       return true;
+    } else {
+      console.log(`Alert ${alert.id} not triggered. Current price: ${cryptoData.current_price}, Target: ${alert.target_price}`);
     }
     
     return false;
@@ -76,7 +87,8 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({
         status: 'success',
         message: 'Alerts checked successfully',
-        processed: processedAlerts
+        processed: processedAlerts,
+        total_alerts_checked: alerts.length
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
