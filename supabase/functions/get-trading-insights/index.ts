@@ -25,7 +25,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a cryptocurrency trading expert. Analyze the current market conditions and provide trading insights. Your response should be a valid JSON object with the following structure: { "recommendation": string, "confidence": number between 0-100, "reasoning": string, "risks": array of strings, "opportunities": array of strings }.'
+            content: 'You are a cryptocurrency trading expert. Analyze the current market conditions and provide trading insights. Return ONLY a JSON object with the following structure, no markdown or additional text: { "recommendation": string, "confidence": number between 0-100, "reasoning": string, "risks": string[], "opportunities": string[] }.'
           },
           {
             role: 'user',
@@ -43,14 +43,31 @@ serve(async (req) => {
     const data = await response.json();
     console.log('Received response from OpenAI:', data);
 
-    // Parse the content as JSON
-    const insights = JSON.parse(data.choices[0].message.content);
-    console.log('Parsed insights:', insights);
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error('Invalid response format from OpenAI');
+    }
 
-    return new Response(
-      JSON.stringify(insights),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    // Clean the response content to ensure it's valid JSON
+    const cleanContent = data.choices[0].message.content.trim();
+    console.log('Cleaned content:', cleanContent);
+
+    try {
+      const insights = JSON.parse(cleanContent);
+      console.log('Parsed insights:', insights);
+
+      // Validate the response structure
+      if (!insights.recommendation || !Array.isArray(insights.risks) || !Array.isArray(insights.opportunities)) {
+        throw new Error('Invalid insights format');
+      }
+
+      return new Response(
+        JSON.stringify(insights),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (parseError) {
+      console.error('JSON parsing error:', parseError);
+      throw new Error(`Failed to parse OpenAI response: ${parseError.message}`);
+    }
   } catch (error) {
     console.error('Error in get-trading-insights:', error);
     return new Response(
