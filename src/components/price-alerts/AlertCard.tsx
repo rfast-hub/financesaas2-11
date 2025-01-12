@@ -14,6 +14,7 @@ interface AlertCardProps {
     target_price: number | null;
     created_at: string;
     triggered_at: string | null;
+    is_active: boolean;
   };
 }
 
@@ -55,6 +56,17 @@ export const AlertCard = ({ alert }: AlertCardProps) => {
     return price.toLocaleString();
   };
 
+  const getAlertStatus = () => {
+    if (alert.triggered_at) {
+      return <Badge variant="secondary">Triggered</Badge>;
+    }
+    return alert.is_active ? (
+      <Badge variant="default">Active</Badge>
+    ) : (
+      <Badge variant="secondary">Inactive</Badge>
+    );
+  };
+
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
       <div className="space-y-2">
@@ -63,11 +75,7 @@ export const AlertCard = ({ alert }: AlertCardProps) => {
             {alert.cryptocurrency} {alert.condition} $
             {formatPrice(alert.target_price)}
           </p>
-          {alert.triggered_at ? (
-            <Badge variant="secondary">Triggered</Badge>
-          ) : (
-            <Badge variant="default">Active</Badge>
-          )}
+          {getAlertStatus()}
         </div>
         <p className="text-sm text-muted-foreground">
           Created on {new Date(alert.created_at!).toLocaleDateString()}
