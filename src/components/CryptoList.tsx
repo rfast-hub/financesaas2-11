@@ -29,12 +29,14 @@ const CryptoList = () => {
     queryFn: fetchCryptoData,
     refetchInterval: 30000, // Refetch every 30 seconds
     retry: 3,
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      },
     },
   });
 
