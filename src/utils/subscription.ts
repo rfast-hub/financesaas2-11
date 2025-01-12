@@ -38,20 +38,19 @@ export const cancelSubscription = async () => {
     });
 
     if (response.error) {
-      // Parse the error message from the Edge Function
-      let errorMessage = 'Failed to cancel subscription';
-      try {
-        const errorData = JSON.parse(response.error.message);
-        errorMessage = errorData.error || errorMessage;
-      } catch {
-        errorMessage = response.error.message || errorMessage;
+      // Handle specific error cases
+      if (response.error.message.includes('No active subscription found')) {
+        throw new Error('No active subscription found. Please refresh the page to see the latest subscription status.');
       }
-      throw new Error(errorMessage);
+      throw new Error(response.error.message || 'Failed to cancel subscription');
     }
 
     return response.data;
   } catch (error) {
     console.error('Subscription cancellation error:', error);
-    throw error;
+    // If it's already a proper Error object, throw it directly
+    if (error instanceof Error) throw error;
+    // Otherwise, create a new Error with the message
+    throw new Error(typeof error === 'string' ? error : 'Failed to cancel subscription');
   }
 };

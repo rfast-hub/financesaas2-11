@@ -46,7 +46,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'No active subscription found',
-          details: subscriptionError?.message 
+          details: subscriptionError?.message || 'No subscription found for this user'
         }),
         { status: 404, headers: corsHeaders }
       )
