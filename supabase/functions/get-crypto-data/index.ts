@@ -18,7 +18,6 @@ const COIN_SYMBOLS = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP'];
 const ICON_BASE_URL = 'https://s3.eu-central-1.amazonaws.com/bbxt-static-icons/type-id/png_32';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -31,61 +30,66 @@ serve(async (req) => {
 
     console.log('Fetching crypto data from CoinAPI...');
 
-    // Fetch exchange rates for all symbols
-    const ratesPromises = COIN_SYMBOLS.map(async (symbol) => {
-      const response = await fetch(
-        `https://rest.coinapi.io/v1/exchangerate/${symbol}/USD`,
-        {
-          headers: {
-            'X-CoinAPI-Key': apiKey,
-          },
+    // Fetch exchange rates and 24h data in a single call for each symbol
+    const cryptoPromises = COIN_SYMBOLS.map(async (symbol) => {
+      try {
+        // Get current rate
+        const rateResponse = await fetch(
+          `https://rest.coinapi.io/v1/exchangerate/${symbol}/USD`,
+          {
+            headers: {
+              'X-CoinAPI-Key': apiKey,
+            },
+          }
+        );
+        
+        if (!rateResponse.ok) {
+          throw new Error(`Failed to fetch rate for ${symbol}: ${rateResponse.statusText}`);
         }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data for ${symbol}: ${response.statusText}`);
-      }
-      
-      return response.json();
-    });
+        
+        const rateData = await rateResponse.json();
+        
+        // Get 24h historical data using time-series endpoint
+        const timeEnd = new Date().toISOString();
+        const timeStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        
+        const historyResponse = await fetch(
+          `https://rest.coinapi.io/v1/exchangerate/${symbol}/USD/history?period_id=1HRS&time_start=${timeStart}&time_end=${timeEnd}`,
+          {
+            headers: {
+              'X-CoinAPI-Key': apiKey,
+            },
+          }
+        );
 
-    const ratesData = await Promise.all(ratesPromises);
-
-    // Fetch 24h OHLCV data for percentage changes
-    const ohlcvPromises = COIN_SYMBOLS.map(async (symbol) => {
-      const response = await fetch(
-        `https://rest.coinapi.io/v1/ohlcv/${symbol}/USD/latest?period_id=1DAY`,
-        {
-          headers: {
-            'X-CoinAPI-Key': apiKey,
-          },
+        if (!historyResponse.ok) {
+          throw new Error(`Failed to fetch history for ${symbol}: ${historyResponse.statusText}`);
         }
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch OHLCV data for ${symbol}: ${response.statusText}`);
+
+        const historyData = await historyResponse.json();
+        
+        // Calculate 24h change and volume
+        const oldPrice = historyData[0]?.rate_open || rateData.rate;
+        const priceChange = ((rateData.rate - oldPrice) / oldPrice) * 100;
+        
+        // Estimate volume from available data
+        const volume = historyData.reduce((acc: number, curr: any) => acc + (curr.volume || 0), 0);
+
+        return {
+          name: getCryptoName(symbol),
+          symbol: symbol.toLowerCase(),
+          current_price: rateData.rate,
+          price_change_percentage_24h: priceChange,
+          total_volume: volume,
+          image: `${ICON_BASE_URL}/${symbol.toLowerCase()}.png`,
+        };
+      } catch (error) {
+        console.error(`Error fetching data for ${symbol}:`, error);
+        throw error;
       }
-      
-      return response.json();
     });
 
-    const ohlcvData = await Promise.all(ohlcvPromises);
-
-    // Format the data to match the expected structure
-    const cryptoData: CryptoData[] = ratesData.map((rate, index) => {
-      const symbol = COIN_SYMBOLS[index];
-      const ohlcv = ohlcvData[index][0]; // Get the latest day's data
-      const priceChange = ((rate.rate - ohlcv.price_open) / ohlcv.price_open) * 100;
-
-      return {
-        name: getCryptoName(symbol),
-        symbol: symbol.toLowerCase(),
-        current_price: rate.rate,
-        price_change_percentage_24h: priceChange,
-        total_volume: ohlcv.volume_traded,
-        image: `${ICON_BASE_URL}/${symbol.toLowerCase()}.png`,
-      };
-    });
+    const cryptoData = await Promise.all(cryptoPromises);
 
     return new Response(JSON.stringify(cryptoData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
