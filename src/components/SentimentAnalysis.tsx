@@ -2,9 +2,11 @@ import { Brain } from "lucide-react";
 import { SentimentCard } from "./sentiment/SentimentCard";
 import { useSentimentData } from "./sentiment/useSentimentData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const SentimentAnalysis = () => {
-  const { data, isLoading, isError } = useSentimentData();
+  const { data, isLoading, isError, error } = useSentimentData();
 
   if (isLoading) {
     return (
@@ -24,8 +26,19 @@ const SentimentAnalysis = () => {
 
   if (isError || !data) {
     return (
-      <div className="text-center p-4 text-warning">
-        Unable to load market sentiment data
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-xl font-semibold text-primary mb-4">
+          <Brain className="w-6 h-6" />
+          Market Sentiment
+        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {error instanceof Error 
+              ? error.message 
+              : "Unable to load market sentiment data. Please ensure you've added your Alpha Vantage API key."}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }

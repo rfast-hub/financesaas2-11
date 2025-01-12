@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 export interface SentimentData {
   overallSentiment: 'bullish' | 'bearish' | 'neutral';
@@ -10,28 +10,30 @@ export interface SentimentData {
 }
 
 const fetchSentimentData = async (): Promise<SentimentData> => {
-  const { data, error } = await supabase.functions.invoke('get-market-sentiment')
+  const { data, error } = await supabase.functions.invoke('get-market-sentiment');
+  
   if (error) {
-    console.error('Error fetching sentiment data:', error)
-    throw new Error('Failed to fetch market sentiment')
+    console.error('Error fetching sentiment data:', error);
+    throw new Error(error.message || 'Failed to fetch market sentiment');
   }
+  
   if (!data) {
-    throw new Error('No data received from sentiment analysis')
+    throw new Error('No data received from sentiment analysis. Please ensure your Alpha Vantage API key is set.');
   }
-  return data
-}
+  
+  return data;
+};
 
 export const useSentimentData = () => {
   return useQuery({
     queryKey: ['marketSentiment'],
     queryFn: fetchSentimentData,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    retry: 1,
     meta: {
       onError: (error: Error) => {
-        toast({
-          title: "Error",
-          description: "Failed to load market sentiment data. Please try again later.",
-          variant: "destructive",
+        toast.error("Failed to load market sentiment data", {
+          description: error.message || "Please ensure your Alpha Vantage API key is set.",
         });
       }
     }
