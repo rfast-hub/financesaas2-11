@@ -28,7 +28,13 @@ serve(async (req) => {
 
     if (userError || !user) {
       console.error('Authentication error:', userError)
-      throw new Error('Not authenticated')
+      return new Response(
+        JSON.stringify({ error: 'Not authenticated' }),
+        { 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     console.log('Fetching subscription for user:', user.id)
@@ -42,16 +48,26 @@ serve(async (req) => {
       .single()
 
     if (subscriptionError) {
-      console.error('Subscription fetch error:', subscriptionError)
-      throw new Error('Failed to fetch subscription details')
+      console.error('Database error:', subscriptionError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch subscription details' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     if (!subscriptionData?.subscription_id) {
       console.error('No active subscription found for user:', user.id)
-      throw new Error('No active subscription found')
+      return new Response(
+        JSON.stringify({ error: 'No active subscription found' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
-
-    console.log('Found subscription:', subscriptionData.subscription_id)
 
     // First, retrieve the Stripe subscription to check its status
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionData.subscription_id)
@@ -97,7 +113,13 @@ serve(async (req) => {
 
     if (updateError) {
       console.error('Database update error:', updateError)
-      throw new Error('Failed to update subscription status')
+      return new Response(
+        JSON.stringify({ error: 'Failed to update subscription status' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     console.log('Database updated successfully')
