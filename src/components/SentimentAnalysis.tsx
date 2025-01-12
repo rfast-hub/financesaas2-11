@@ -16,7 +16,7 @@ const SentimentAnalysis = () => {
           Market Sentiment
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(3)].map((_, i) => (
             <Skeleton key={i} className="h-[120px] w-full" />
           ))}
         </div>
@@ -58,11 +58,6 @@ const SentimentAnalysis = () => {
         <SentimentCard
           title="Sentiment Score"
           value={data.sentimentScore}
-          icon={<Brain className="w-5 h-5 text-primary" />}
-        />
-        <SentimentCard
-          title="Social Media Mentions"
-          value={data.socialMediaMentions}
           icon={<Brain className="w-5 h-5 text-primary" />}
         />
         <SentimentCard
