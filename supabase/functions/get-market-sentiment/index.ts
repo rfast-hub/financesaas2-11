@@ -25,7 +25,7 @@ interface AlphaVantageResponse {
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
@@ -41,43 +41,81 @@ serve(async (req) => {
     
     if (!response.ok) {
       console.error('Alpha Vantage API error:', response.status, response.statusText)
-      throw new Error('Failed to fetch data from Alpha Vantage')
+      const errorText = await response.text()
+      console.error('Error response:', errorText)
+      throw new Error(`Failed to fetch data from Alpha Vantage: ${response.status} ${response.statusText}`)
     }
 
-    const data: AlphaVantageResponse = await response.json()
+    const data = await response.json()
+    console.log('Raw Alpha Vantage response:', JSON.stringify(data))
     
-    if (!data.feed || !Array.isArray(data.feed)) {
-      throw new Error('Invalid response format from Alpha Vantage')
+    // Check if the response contains the expected structure
+    if (!data || typeof data !== 'object') {
+      throw new Error('Invalid response format: empty or non-object response')
     }
 
-    // Enhanced sentiment calculation
-    const sentimentScores = data.feed.map(item => {
-      // Convert label-based sentiment to numerical values
-      const labelScore = item.overall_sentiment_label === 'Bullish' ? 1 :
-                        item.overall_sentiment_label === 'Somewhat-Bullish' ? 0.5 :
-                        item.overall_sentiment_label === 'Neutral' ? 0 :
-                        item.overall_sentiment_label === 'Somewhat-Bearish' ? -0.5 :
-                        item.overall_sentiment_label === 'Bearish' ? -1 : 0;
-      
-      // Combine numerical score with label-based score for more accuracy
-      return (item.overall_sentiment_score + labelScore) / 2;
-    }).filter(score => !isNaN(score));
+    // Handle API limit message
+    if (data.Note) {
+      console.error('API limit reached:', data.Note)
+      throw new Error('API rate limit reached')
+    }
+
+    // Handle API error message
+    if (data.Error) {
+      console.error('API error:', data.Error)
+      throw new Error(data.Error)
+    }
+
+    // Validate feed data
+    if (!Array.isArray(data.feed)) {
+      console.error('Invalid feed format:', data.feed)
+      throw new Error('Invalid feed format in response')
+    }
+
+    // Filter out invalid entries and map sentiment scores
+    const sentimentScores = data.feed
+      .filter(item => 
+        item && 
+        typeof item === 'object' && 
+        'overall_sentiment_score' in item &&
+        'overall_sentiment_label' in item
+      )
+      .map(item => {
+        const labelScore = 
+          item.overall_sentiment_label === 'Bullish' ? 1 :
+          item.overall_sentiment_label === 'Somewhat-Bullish' ? 0.5 :
+          item.overall_sentiment_label === 'Neutral' ? 0 :
+          item.overall_sentiment_label === 'Somewhat-Bearish' ? -0.5 :
+          item.overall_sentiment_label === 'Bearish' ? -1 : 0;
+        
+        return (Number(item.overall_sentiment_score) + labelScore) / 2;
+      })
+      .filter(score => !isNaN(score));
 
     if (sentimentScores.length === 0) {
-      throw new Error('No valid sentiment scores found in the response')
+      console.warn('No valid sentiment scores found, using fallback values')
+      // Return fallback values instead of throwing an error
+      return new Response(JSON.stringify({
+        overallSentiment: 'neutral',
+        sentimentScore: 50,
+        trendStrength: 50,
+        lastUpdated: new Date().toISOString()
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const averageSentiment = sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length
     
-    // Calculate trend strength based on sentiment consistency and variance
+    // Calculate variance and standard deviation for trend strength
     const variance = sentimentScores.reduce((sq, n) => 
       sq + Math.pow(n - averageSentiment, 2), 0) / sentimentScores.length;
     const standardDeviation = Math.sqrt(variance);
     
-    // Normalize trend strength to be higher when sentiments are more consistent
+    // Normalize trend strength (higher when sentiments are more consistent)
     const trendStrength = Math.min(100, Math.max(0, (1 - standardDeviation) * 100));
 
-    // Determine overall sentiment with more nuanced thresholds
+    // Determine overall sentiment with adjusted thresholds
     let overallSentiment: 'bullish' | 'bearish' | 'neutral';
     if (averageSentiment > 0.2) {
       overallSentiment = 'bullish'
@@ -87,7 +125,7 @@ serve(async (req) => {
       overallSentiment = 'neutral'
     }
 
-    // Convert sentiment score to 0-100 scale with improved scaling
+    // Convert sentiment score to 0-100 scale
     const sentimentScore = Math.min(100, Math.max(0, ((averageSentiment + 1) / 2) * 100));
 
     const result = {
