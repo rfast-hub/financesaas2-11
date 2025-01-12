@@ -16,20 +16,19 @@ serve(async (req) => {
     console.log('Received request to get crypto data');
     
     const { limit } = await req.json();
-    const cryptoSymbols = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP'].slice(0, limit || 5);
+    const cryptoSymbols = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'ripple'].slice(0, limit || 5);
     
-    console.log(`Fetching data for ${cryptoSymbols.length} cryptocurrencies`);
+    console.log(`Fetching data for ${cryptoSymbols.length} cryptocurrencies:`, cryptoSymbols);
     
     const cryptoDataPromises = cryptoSymbols.map(async (symbol) => {
       try {
-        const data = await getCryptoData(symbol.toLowerCase());
+        const data = await getCryptoData(symbol);
         return {
           name: getCryptoName(symbol),
-          symbol: symbol.toLowerCase(),
+          symbol: symbol,
           current_price: data.current_price,
           price_change_percentage_24h: data.price_change_percentage_24h,
           total_volume: data.total_volume,
-          image: `https://assets.coingecko.com/coins/images/1/thumb/${symbol.toLowerCase()}.png`,
         };
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
@@ -38,27 +37,34 @@ serve(async (req) => {
     });
 
     const results = await Promise.all(cryptoDataPromises);
-    console.log('Successfully fetched all crypto data');
+    console.log('Successfully fetched all crypto data:', results);
 
-    return new Response(JSON.stringify(results), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify(results),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Error in get-crypto-data function:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ 
+        error: 'Failed to fetch cryptocurrency data',
+        details: error.message 
+      }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 });
 
 function getCryptoName(symbol: string): string {
   const names: { [key: string]: string } = {
-    'BTC': 'Bitcoin',
-    'ETH': 'Ethereum',
-    'BNB': 'Binance Coin',
-    'SOL': 'Solana',
-    'XRP': 'XRP',
+    'bitcoin': 'Bitcoin',
+    'ethereum': 'Ethereum',
+    'binancecoin': 'Binance Coin',
+    'solana': 'Solana',
+    'ripple': 'XRP',
   };
   return names[symbol] || symbol;
 }
