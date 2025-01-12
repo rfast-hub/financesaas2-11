@@ -50,34 +50,45 @@ serve(async (req) => {
       throw new Error('Invalid response format from Alpha Vantage')
     }
 
-    // Calculate sentiment metrics
-    const sentimentScores = data.feed.map(item => item.overall_sentiment_score)
-    const validScores = sentimentScores.filter(score => !isNaN(score))
-    
-    if (validScores.length === 0) {
+    // Enhanced sentiment calculation
+    const sentimentScores = data.feed.map(item => {
+      // Convert label-based sentiment to numerical values
+      const labelScore = item.overall_sentiment_label === 'Bullish' ? 1 :
+                        item.overall_sentiment_label === 'Somewhat-Bullish' ? 0.5 :
+                        item.overall_sentiment_label === 'Neutral' ? 0 :
+                        item.overall_sentiment_label === 'Somewhat-Bearish' ? -0.5 :
+                        item.overall_sentiment_label === 'Bearish' ? -1 : 0;
+      
+      // Combine numerical score with label-based score for more accuracy
+      return (item.overall_sentiment_score + labelScore) / 2;
+    }).filter(score => !isNaN(score));
+
+    if (sentimentScores.length === 0) {
       throw new Error('No valid sentiment scores found in the response')
     }
 
-    const averageSentiment = validScores.reduce((a, b) => a + b, 0) / validScores.length
+    const averageSentiment = sentimentScores.reduce((a, b) => a + b, 0) / sentimentScores.length
     
-    // Calculate trend strength based on sentiment consistency
-    const standardDeviation = Math.sqrt(
-      validScores.reduce((sq, n) => sq + Math.pow(n - averageSentiment, 2), 0) / validScores.length
-    )
-    const trendStrength = Math.min(100, Math.max(0, (1 - standardDeviation) * 100))
+    // Calculate trend strength based on sentiment consistency and variance
+    const variance = sentimentScores.reduce((sq, n) => 
+      sq + Math.pow(n - averageSentiment, 2), 0) / sentimentScores.length;
+    const standardDeviation = Math.sqrt(variance);
+    
+    // Normalize trend strength to be higher when sentiments are more consistent
+    const trendStrength = Math.min(100, Math.max(0, (1 - standardDeviation) * 100));
 
-    // Determine overall sentiment
-    let overallSentiment: 'bullish' | 'bearish' | 'neutral'
-    if (averageSentiment > 0.15) {
+    // Determine overall sentiment with more nuanced thresholds
+    let overallSentiment: 'bullish' | 'bearish' | 'neutral';
+    if (averageSentiment > 0.2) {
       overallSentiment = 'bullish'
-    } else if (averageSentiment < -0.15) {
+    } else if (averageSentiment < -0.2) {
       overallSentiment = 'bearish'
     } else {
       overallSentiment = 'neutral'
     }
 
-    // Convert sentiment score to 0-100 scale
-    const sentimentScore = Math.min(100, Math.max(0, ((averageSentiment + 1) / 2) * 100))
+    // Convert sentiment score to 0-100 scale with improved scaling
+    const sentimentScore = Math.min(100, Math.max(0, ((averageSentiment + 1) / 2) * 100));
 
     const result = {
       overallSentiment,
