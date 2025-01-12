@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 
 export interface Subscription {
   id: string;
@@ -31,17 +30,28 @@ export const cancelSubscription = async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) throw new Error('Not authenticated');
 
-  const response = await supabase.functions.invoke('cancel-subscription', {
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+  try {
+    const response = await supabase.functions.invoke('cancel-subscription', {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
 
-  if (response.error) {
-    console.error('Error from Edge Function:', response.error);
-    const errorData = JSON.parse(response.error.message);
-    throw new Error(errorData.error || 'Failed to cancel subscription');
+    if (response.error) {
+      // Parse the error message from the Edge Function
+      let errorMessage = 'Failed to cancel subscription';
+      try {
+        const errorData = JSON.parse(response.error.message);
+        errorMessage = errorData.error || errorMessage;
+      } catch {
+        errorMessage = response.error.message || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    return response.data;
+  } catch (error) {
+    console.error('Subscription cancellation error:', error);
+    throw error;
   }
-
-  return response.data;
 };

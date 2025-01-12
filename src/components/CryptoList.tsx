@@ -1,23 +1,53 @@
 import { ArrowUpIcon, ArrowDownIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "@/hooks/use-toast";
 
 const fetchCryptoData = async () => {
-  const response = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false');
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
+  try {
+    const response = await fetch(
+      'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=5&page=1&sparkline=false',
+      {
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+  } catch (error) {
+    console.error('Error fetching crypto data:', error);
+    throw new Error('Failed to fetch cryptocurrency data. Please try again later.');
   }
-  return response.json();
 };
 
 const CryptoList = () => {
-  const { data: cryptos, isLoading } = useQuery({
+  const { data: cryptos, isLoading, error } = useQuery({
     queryKey: ['cryptos'],
     queryFn: fetchCryptoData,
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 3,
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
     return <div className="glass-card rounded-lg p-6 animate-pulse">Loading...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="glass-card rounded-lg p-6 text-warning">
+        Failed to load cryptocurrency data. Please try again later.
+      </div>
+    );
   }
 
   return (

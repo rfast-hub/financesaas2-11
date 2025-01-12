@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
 }
 
 serve(async (req) => {
@@ -27,17 +28,11 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
 
     if (userError || !user) {
-      console.error('Authentication error:', userError)
       return new Response(
         JSON.stringify({ error: 'Not authenticated' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        { status: 401, headers: corsHeaders }
       )
     }
-
-    console.log('Fetching subscription for user:', user.id)
 
     // Get the subscription from our database
     const { data: subscriptionData, error: subscriptionError } = await supabaseClient
@@ -47,62 +42,24 @@ serve(async (req) => {
       .eq('is_active', true)
       .single()
 
-    if (subscriptionError) {
-      console.error('Database error:', subscriptionError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch subscription details' }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    if (!subscriptionData?.subscription_id) {
-      console.error('No active subscription found for user:', user.id)
-      return new Response(
-        JSON.stringify({ error: 'No active subscription found' }),
-        { 
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    // First, retrieve the Stripe subscription to check its status
-    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionData.subscription_id)
-    
-    if (stripeSubscription.status === 'canceled') {
-      console.log('Subscription already canceled in Stripe')
-      // Update our database to reflect this
-      await supabaseClient
-        .from('subscriptions')
-        .update({
-          status: 'canceled',
-          is_active: false,
-          canceled_at: new Date().toISOString(),
-        })
-        .eq('subscription_id', subscriptionData.subscription_id)
-
+    if (subscriptionError || !subscriptionData?.subscription_id) {
       return new Response(
         JSON.stringify({ 
-          success: true, 
-          message: 'Subscription was already canceled'
+          error: 'No active subscription found',
+          details: subscriptionError?.message 
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 404, headers: corsHeaders }
       )
     }
 
-    // Cancel the subscription in Stripe immediately
-    const canceledSubscription = await stripe.subscriptions.cancel(subscriptionData.subscription_id, {
-      cancel_at_period_end: false,
-      prorate: true,
-    })
-
-    console.log('Stripe subscription canceled:', canceledSubscription.id)
+    // Cancel the subscription in Stripe
+    const canceledSubscription = await stripe.subscriptions.cancel(
+      subscriptionData.subscription_id,
+      { cancel_at_period_end: false }
+    )
 
     // Update our database
-    const { error: updateError } = await supabaseClient
+    await supabaseClient
       .from('subscriptions')
       .update({
         status: 'canceled',
@@ -111,37 +68,25 @@ serve(async (req) => {
       })
       .eq('subscription_id', subscriptionData.subscription_id)
 
-    if (updateError) {
-      console.error('Database update error:', updateError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to update subscription status' }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      )
-    }
-
-    console.log('Database updated successfully')
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         subscription: canceledSubscription,
-        message: 'Subscription successfully canceled and billing stopped immediately'
+        message: 'Subscription successfully canceled'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: corsHeaders }
     )
+
   } catch (error) {
     console.error('Error canceling subscription:', error)
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || 'Failed to cancel subscription',
-        details: error instanceof Error ? error.stack : undefined
+        details: error.stack
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400 
+        status: error.status || 500,
+        headers: corsHeaders
       }
     )
   }
