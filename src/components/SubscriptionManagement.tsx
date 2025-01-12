@@ -39,6 +39,11 @@ const SubscriptionManagement = () => {
     },
   });
 
+  const handleCancellation = async () => {
+    setIsLoading(true);
+    return cancelSubscriptionMutation.mutateAsync();
+  };
+
   if (isLoadingSubscription) {
     return (
       <div className="flex items-center justify-center p-6">
@@ -67,7 +72,7 @@ const SubscriptionManagement = () => {
       <CardContent className="space-y-4">
         <SubscriptionDetails subscription={subscription} />
         <CancellationDialog
-          onCancel={() => cancelSubscriptionMutation.mutate()}
+          onCancel={handleCancellation}
           isLoading={isLoading}
         />
       </CardContent>
