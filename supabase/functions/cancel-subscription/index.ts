@@ -41,8 +41,13 @@ serve(async (req) => {
       .eq('is_active', true)
       .single()
 
-    if (subscriptionError || !subscriptionData?.subscription_id) {
+    if (subscriptionError) {
       console.error('Subscription fetch error:', subscriptionError)
+      throw new Error('Failed to fetch subscription details')
+    }
+
+    if (!subscriptionData?.subscription_id) {
+      console.error('No active subscription found for user:', user.id)
       throw new Error('No active subscription found')
     }
 
@@ -74,8 +79,8 @@ serve(async (req) => {
 
     // Cancel the subscription in Stripe immediately
     const canceledSubscription = await stripe.subscriptions.cancel(subscriptionData.subscription_id, {
-      cancel_at_period_end: false, // This makes it take effect immediately
-      prorate: true, // This will refund the unused portion if applicable
+      cancel_at_period_end: false,
+      prorate: true,
     })
 
     console.log('Stripe subscription canceled:', canceledSubscription.id)
