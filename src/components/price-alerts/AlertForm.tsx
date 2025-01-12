@@ -35,28 +35,34 @@ export const AlertForm = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (alertType === "price" && (!targetPrice || isNaN(parseFloat(targetPrice)))) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid target price",
-        variant: "destructive",
-      });
-      return;
+    let isValid = true;
+    let errorMessage = "";
+
+    switch (alertType) {
+      case "price":
+        if (!targetPrice || isNaN(parseFloat(targetPrice)) || parseFloat(targetPrice) <= 0) {
+          isValid = false;
+          errorMessage = "Please enter a valid target price greater than 0";
+        }
+        break;
+      case "percentage":
+        if (!percentage || isNaN(parseFloat(percentage))) {
+          isValid = false;
+          errorMessage = "Please enter a valid percentage";
+        }
+        break;
+      case "volume":
+        if (!volume || isNaN(parseFloat(volume)) || parseFloat(volume) <= 0) {
+          isValid = false;
+          errorMessage = "Please enter a valid volume threshold greater than 0";
+        }
+        break;
     }
 
-    if (alertType === "percentage" && (!percentage || isNaN(parseFloat(percentage)))) {
+    if (!isValid) {
       toast({
         title: "Error",
-        description: "Please enter a valid percentage",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (alertType === "volume" && (!volume || isNaN(parseFloat(volume)))) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid volume threshold",
+        description: errorMessage,
         variant: "destructive",
       });
       return;

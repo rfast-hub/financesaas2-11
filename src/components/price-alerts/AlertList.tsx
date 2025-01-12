@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { AlertCard } from "./AlertCard";
+import { toast } from "sonner";
 
 export const AlertList = () => {
-  const { data: alerts, isLoading } = useQuery({
+  const { data: alerts, isLoading, error } = useQuery({
     queryKey: ["price-alerts"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -19,6 +20,11 @@ export const AlertList = () => {
       if (error) throw error;
       return data;
     },
+    onError: (error) => {
+      toast.error("Failed to fetch alerts", {
+        description: error.message
+      });
+    },
   });
 
   if (isLoading) {
@@ -26,6 +32,14 @@ export const AlertList = () => {
       <div className="flex justify-center">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <p className="text-center text-destructive">
+        Failed to load alerts. Please try again.
+      </p>
     );
   }
 
