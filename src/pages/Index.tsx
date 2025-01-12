@@ -4,7 +4,6 @@ import CryptoList from "@/components/CryptoList";
 import AIPredictions from "@/components/AIPredictions";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
-import SubscriptionManagement from "@/components/SubscriptionManagement";
 import { ChartLine, Brain, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +74,6 @@ const Index = () => {
           <div className="space-y-8">
             <PriceAlerts />
             <CryptoList />
-            <SubscriptionManagement />
           </div>
         </div>
 
