@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface AlertCardProps {
   alert: {
@@ -12,6 +13,7 @@ interface AlertCardProps {
     condition: string;
     target_price: number | null;
     created_at: string;
+    triggered_at: string | null;
   };
 }
 
@@ -55,13 +57,23 @@ export const AlertCard = ({ alert }: AlertCardProps) => {
 
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
-      <div>
-        <p className="font-medium">
-          {alert.cryptocurrency} {alert.condition} $
-          {formatPrice(alert.target_price)}
-        </p>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <p className="font-medium">
+            {alert.cryptocurrency} {alert.condition} $
+            {formatPrice(alert.target_price)}
+          </p>
+          {alert.triggered_at ? (
+            <Badge variant="secondary">Triggered</Badge>
+          ) : (
+            <Badge variant="default">Active</Badge>
+          )}
+        </div>
         <p className="text-sm text-muted-foreground">
           Created on {new Date(alert.created_at!).toLocaleDateString()}
+          {alert.triggered_at && (
+            <> • Triggered on {new Date(alert.triggered_at).toLocaleDateString()}</>
+          )}
         </p>
       </div>
       <Button
