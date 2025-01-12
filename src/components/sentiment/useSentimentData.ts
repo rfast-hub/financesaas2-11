@@ -1,12 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 
 export interface SentimentData {
   overallSentiment: 'bullish' | 'bearish' | 'neutral';
   sentimentScore: number;
-  socialMediaMentions: number;
   trendStrength: number;
+  lastUpdated: string;
 }
 
 const fetchSentimentData = async (): Promise<SentimentData> => {
@@ -18,7 +17,7 @@ const fetchSentimentData = async (): Promise<SentimentData> => {
   }
   
   if (!data) {
-    throw new Error('No data received from sentiment analysis. Please ensure your Alpha Vantage API key is set.');
+    throw new Error('No data received from sentiment analysis');
   }
   
   return data;
@@ -29,13 +28,7 @@ export const useSentimentData = () => {
     queryKey: ['marketSentiment'],
     queryFn: fetchSentimentData,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-    retry: 1,
-    meta: {
-      onError: (error: Error) => {
-        toast.error("Failed to load market sentiment data", {
-          description: error.message || "Please ensure your Alpha Vantage API key is set.",
-        });
-      }
-    }
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 };

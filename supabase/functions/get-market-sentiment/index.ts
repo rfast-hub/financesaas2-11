@@ -6,8 +6,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+interface NewsItem {
+  title: string;
+  url: string;
+  time_published: string;
+  authors: string[];
+  summary: string;
+  overall_sentiment_score: number;
+  overall_sentiment_label: string;
+}
+
+interface AlphaVantageResponse {
+  items: string;
+  sentiment_score_definition: string;
+  relevance_score_definition: string;
+  feed: NewsItem[];
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -19,56 +35,55 @@ serve(async (req) => {
     }
 
     console.log('Fetching sentiment data from Alpha Vantage...')
-    const response = await fetch(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=CRYPTO:BTC&apikey=${API_KEY}`)
+    const response = await fetch(
+      `https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=CRYPTO:BTC&apikey=${API_KEY}&limit=50`
+    )
     
     if (!response.ok) {
       console.error('Alpha Vantage API error:', response.status, response.statusText)
       throw new Error('Failed to fetch data from Alpha Vantage')
     }
 
-    const data = await response.json()
-    console.log('Received response from Alpha Vantage:', JSON.stringify(data).substring(0, 200) + '...')
-
+    const data: AlphaVantageResponse = await response.json()
+    
     if (!data.feed || !Array.isArray(data.feed)) {
-      console.warn('No feed data found in response, using default values')
-      return new Response(
-        JSON.stringify({
-          overallSentiment: 'neutral',
-          sentimentScore: 50,
-          socialMediaMentions: 0,
-          trendStrength: 50
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      throw new Error('Invalid response format from Alpha Vantage')
     }
 
-    let totalSentiment = 0
-    let mentionsCount = data.feed.length
-    let bullishCount = 0
-    let bearishCount = 0
+    // Calculate sentiment metrics
+    const sentimentScores = data.feed.map(item => item.overall_sentiment_score)
+    const validScores = sentimentScores.filter(score => !isNaN(score))
+    
+    if (validScores.length === 0) {
+      throw new Error('No valid sentiment scores found in the response')
+    }
 
-    data.feed.forEach((item: any) => {
-      const sentiment = parseFloat(item.overall_sentiment_score)
-      if (!isNaN(sentiment)) {
-        totalSentiment += sentiment
-        if (sentiment > 0.2) bullishCount++
-        if (sentiment < -0.2) bearishCount++
-      }
-    })
+    const averageSentiment = validScores.reduce((a, b) => a + b, 0) / validScores.length
+    
+    // Calculate trend strength based on sentiment consistency
+    const standardDeviation = Math.sqrt(
+      validScores.reduce((sq, n) => sq + Math.pow(n - averageSentiment, 2), 0) / validScores.length
+    )
+    const trendStrength = Math.min(100, Math.max(0, (1 - standardDeviation) * 100))
 
-    const averageSentiment = mentionsCount > 0 ? totalSentiment / mentionsCount : 0
-    const sentimentScore = Math.round(((averageSentiment + 1) / 2) * 100)
-    const trendStrength = mentionsCount > 0 
-      ? Math.round(Math.abs((bullishCount - bearishCount) / mentionsCount) * 100)
-      : 50
+    // Determine overall sentiment
+    let overallSentiment: 'bullish' | 'bearish' | 'neutral'
+    if (averageSentiment > 0.15) {
+      overallSentiment = 'bullish'
+    } else if (averageSentiment < -0.15) {
+      overallSentiment = 'bearish'
+    } else {
+      overallSentiment = 'neutral'
+    }
+
+    // Convert sentiment score to 0-100 scale
+    const sentimentScore = Math.min(100, Math.max(0, ((averageSentiment + 1) / 2) * 100))
 
     const result = {
-      overallSentiment: bullishCount > bearishCount ? 'bullish' : bearishCount > bullishCount ? 'bearish' : 'neutral',
-      sentimentScore: Math.min(Math.max(sentimentScore, 0), 100),
-      socialMediaMentions: mentionsCount,
-      trendStrength: Math.min(Math.max(trendStrength, 0), 100)
+      overallSentiment,
+      sentimentScore: Math.round(sentimentScore),
+      trendStrength: Math.round(trendStrength),
+      lastUpdated: new Date().toISOString()
     }
 
     console.log('Processed sentiment data:', result)

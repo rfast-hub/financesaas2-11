@@ -36,7 +36,7 @@ const SentimentAnalysis = () => {
           <AlertDescription>
             {error instanceof Error 
               ? error.message 
-              : "Unable to load market sentiment data. Please ensure you've added your Alpha Vantage API key."}
+              : "Unable to load market sentiment data. Please try again later."}
           </AlertDescription>
         </Alert>
       </div>
