@@ -21,33 +21,56 @@ export function isAlertTriggered(alert: PriceAlert, cryptoData: CryptoData): boo
   const currentPrice = Number(cryptoData.current_price.toFixed(2));
   const targetPrice = alert.target_price ? Number(alert.target_price.toFixed(2)) : null;
 
+  let isTriggered = false;
+  
   switch (alert.alert_type) {
     case 'price':
-      if (!targetPrice) return false;
-      return alert.condition === 'above' 
+      if (!targetPrice) {
+        console.log('No target price set for price alert');
+        return false;
+      }
+      isTriggered = alert.condition === 'above' 
         ? currentPrice >= targetPrice
         : currentPrice <= targetPrice;
+      console.log(`Price comparison: ${currentPrice} ${alert.condition} ${targetPrice} = ${isTriggered}`);
+      break;
     
     case 'percentage':
-      if (!alert.percentage_change) return false;
+      if (!alert.percentage_change) {
+        console.log('No percentage change set for percentage alert');
+        return false;
+      }
       const currentPercentage = Number(cryptoData.price_change_percentage_24h.toFixed(2));
       const targetPercentage = Number(alert.percentage_change.toFixed(2));
-      return alert.condition === 'above'
+      isTriggered = alert.condition === 'above'
         ? currentPercentage >= targetPercentage
         : currentPercentage <= targetPercentage;
+      console.log(`Percentage comparison: ${currentPercentage}% ${alert.condition} ${targetPercentage}% = ${isTriggered}`);
+      break;
     
     case 'volume':
-      if (!alert.volume_threshold) return false;
+      if (!alert.volume_threshold) {
+        console.log('No volume threshold set for volume alert');
+        return false;
+      }
       const currentVolume = Math.floor(cryptoData.total_volume);
       const targetVolume = Math.floor(alert.volume_threshold);
-      return currentVolume >= targetVolume;
+      isTriggered = currentVolume >= targetVolume;
+      console.log(`Volume comparison: ${currentVolume} >= ${targetVolume} = ${isTriggered}`);
+      break;
     
     default:
+      console.log(`Unknown alert type: ${alert.alert_type}`);
       return false;
   }
+
+  console.log(`Alert triggered: ${isTriggered}`);
+  return isTriggered;
 }
 
 export async function fetchActiveAlerts(): Promise<PriceAlert[]> {
+  console.log('Fetching active alerts...');
+  
   const { data: alerts, error: alertsError } = await supabase
     .from('price_alerts')
     .select('*')
@@ -59,10 +82,13 @@ export async function fetchActiveAlerts(): Promise<PriceAlert[]> {
     throw alertsError;
   }
 
+  console.log(`Found ${alerts.length} active alerts:`, alerts);
   return alerts;
 }
 
 export async function markAlertAsTriggered(alertId: string): Promise<void> {
+  console.log(`Marking alert ${alertId} as triggered...`);
+  
   const { error: updateError } = await supabase
     .from('price_alerts')
     .update({
@@ -75,9 +101,13 @@ export async function markAlertAsTriggered(alertId: string): Promise<void> {
     console.error('Error updating alert:', updateError);
     throw updateError;
   }
+
+  console.log(`Alert ${alertId} marked as triggered successfully`);
 }
 
 export async function getUserEmail(userId: string): Promise<string | null> {
+  console.log(`Fetching email for user ${userId}...`);
+  
   const { data: userData, error: userError } = await supabase
     .auth.admin.getUserById(userId);
 
@@ -86,5 +116,7 @@ export async function getUserEmail(userId: string): Promise<string | null> {
     throw userError;
   }
 
-  return userData?.user?.email || null;
+  const email = userData?.user?.email || null;
+  console.log(`Email for user ${userId}: ${email}`);
+  return email;
 }
