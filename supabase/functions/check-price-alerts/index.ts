@@ -12,17 +12,19 @@ import { PriceAlert } from '../_shared/types.ts';
 
 async function processAlert(alert: PriceAlert): Promise<boolean> {
   try {
+    console.log(`Processing alert for ${alert.cryptocurrency}:`, alert);
+    
     const cryptoData = await getCryptoData(alert.cryptocurrency);
-    console.log(`Processing ${alert.alert_type} alert for ${alert.cryptocurrency}:`, {
-      alert,
-      cryptoData,
-    });
+    console.log(`Fetched crypto data:`, cryptoData);
     
     if (isAlertTriggered(alert, cryptoData)) {
+      console.log(`Alert ${alert.id} triggered!`);
+      
       if (alert.email_notification) {
         const userEmail = await getUserEmail(alert.user_id);
         if (userEmail) {
           await sendEmailAlert(userEmail, alert, cryptoData);
+          console.log(`Email sent to ${userEmail} for alert ${alert.id}`);
         }
       }
 
@@ -38,7 +40,6 @@ async function processAlert(alert: PriceAlert): Promise<boolean> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -65,7 +66,6 @@ const handler = async (req: Request): Promise<Response> => {
     const processedAlerts = [];
     
     for (const alert of alerts) {
-      console.log(`Processing alert ${alert.id} for ${alert.cryptocurrency}`);
       const success = await processAlert(alert);
       if (success) {
         processedAlerts.push(alert.id);

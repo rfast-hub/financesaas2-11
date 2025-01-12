@@ -6,11 +6,23 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 export function isAlertTriggered(alert: PriceAlert, cryptoData: CryptoData): boolean {
+  console.log(`Checking alert for ${alert.cryptocurrency}:`, {
+    alert_type: alert.alert_type,
+    condition: alert.condition,
+    target_price: alert.target_price,
+    current_price: cryptoData.current_price,
+    percentage_change: alert.percentage_change,
+    current_percentage: cryptoData.price_change_percentage_24h,
+    volume_threshold: alert.volume_threshold,
+    current_volume: cryptoData.total_volume,
+  });
+
   switch (alert.alert_type) {
     case 'price':
+      if (!alert.target_price) return false;
       return alert.condition === 'above' 
-        ? cryptoData.current_price >= (alert.target_price || 0)
-        : cryptoData.current_price <= (alert.target_price || 0);
+        ? cryptoData.current_price >= alert.target_price
+        : cryptoData.current_price <= alert.target_price;
     
     case 'percentage':
       if (!alert.percentage_change) return false;
@@ -39,7 +51,7 @@ export async function fetchActiveAlerts(): Promise<PriceAlert[]> {
     throw alertsError;
   }
 
-  return alerts as PriceAlert[];
+  return alerts;
 }
 
 export async function markAlertAsTriggered(alertId: string): Promise<void> {
