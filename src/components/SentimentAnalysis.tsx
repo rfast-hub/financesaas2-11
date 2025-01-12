@@ -1,132 +1,62 @@
-import { Card } from "@/components/ui/card";
-import { Brain, TrendingUp, TrendingDown, MinusCircle } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
-interface SentimentData {
-  overallSentiment: 'bullish' | 'bearish' | 'neutral';
-  sentimentScore: number;
-  socialMediaMentions: number;
-  trendStrength: number;
-}
-
-const fetchSentimentData = async (): Promise<SentimentData> => {
-  const { data, error } = await supabase.functions.invoke('get-market-sentiment')
-  if (error) {
-    console.error('Error fetching sentiment data:', error)
-    throw new Error('Failed to fetch market sentiment')
-  }
-  if (!data) {
-    throw new Error('No data received from sentiment analysis')
-  }
-  return data
-}
+import { Brain } from "lucide-react";
+import { SentimentCard } from "./sentiment/SentimentCard";
+import { useSentimentData } from "./sentiment/useSentimentData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SentimentAnalysis = () => {
-  const { data: sentimentData, isLoading, error } = useQuery({
-    queryKey: ['marketSentiment'],
-    queryFn: fetchSentimentData,
-    refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
-    meta: {
-      onError: (error: Error) => {
-        toast({
-          title: "Error",
-          description: "Failed to load market sentiment data. Please try again later.",
-          variant: "destructive",
-        });
-      }
-    }
-  });
-
-  const getSentimentIcon = (sentiment: string) => {
-    switch (sentiment) {
-      case 'bullish':
-        return <TrendingUp className="w-6 h-6 text-success" />;
-      case 'bearish':
-        return <TrendingDown className="w-6 h-6 text-warning" />;
-      default:
-        return <MinusCircle className="w-6 h-6 text-muted-foreground" />;
-    }
-  };
-
-  const getSentimentColor = (score: number) => {
-    if (score >= 70) return 'text-success';
-    if (score <= 30) return 'text-warning';
-    return 'text-muted-foreground';
-  };
+  const { data, isLoading, isError } = useSentimentData();
 
   if (isLoading) {
     return (
-      <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
-        <div className="flex items-center gap-2">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-xl font-semibold text-primary mb-4">
           <Brain className="w-6 h-6" />
-          <h2 className="text-xl font-semibold">Loading sentiment data...</h2>
+          Market Sentiment
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Skeleton key={i} className="h-[120px] w-full" />
+          ))}
         </div>
       </div>
     );
   }
 
-  if (error) {
+  if (isError || !data) {
     return (
-      <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
-        <div className="flex items-center gap-2 text-warning">
-          <Brain className="w-6 h-6" />
-          <h2 className="text-xl font-semibold">Error loading sentiment data</h2>
-        </div>
+      <div className="text-center p-4 text-warning">
+        Unable to load market sentiment data
       </div>
     );
   }
-
-  if (!sentimentData) return null;
 
   return (
-    <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Brain className="w-6 h-6" />
-          <h2 className="text-xl font-semibold">Market Sentiment</h2>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-xl font-semibold text-primary mb-4">
+        <Brain className="w-6 h-6" />
+        Market Sentiment
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-muted-foreground">Overall Sentiment</span>
-            {getSentimentIcon(sentimentData.overallSentiment)}
-          </div>
-          <div className="text-2xl font-bold capitalize">
-            {sentimentData.overallSentiment}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-muted-foreground">Sentiment Score</span>
-          </div>
-          <div className={`text-2xl font-bold ${getSentimentColor(sentimentData.sentimentScore)}`}>
-            {sentimentData.sentimentScore}%
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-muted-foreground">Social Media Activity</span>
-          </div>
-          <div className="text-2xl font-bold">
-            {sentimentData.socialMediaMentions.toLocaleString()}
-          </div>
-          <div className="text-sm text-muted-foreground">mentions in 24h</div>
-        </Card>
-
-        <Card className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-muted-foreground">Trend Strength</span>
-          </div>
-          <div className={`text-2xl font-bold ${getSentimentColor(sentimentData.trendStrength)}`}>
-            {sentimentData.trendStrength}%
-          </div>
-        </Card>
+        <SentimentCard
+          title="Overall Sentiment"
+          value={data.overallSentiment.charAt(0).toUpperCase() + data.overallSentiment.slice(1)}
+          sentiment={data.overallSentiment}
+        />
+        <SentimentCard
+          title="Sentiment Score"
+          value={data.sentimentScore}
+          icon={<Brain className="w-5 h-5 text-primary" />}
+        />
+        <SentimentCard
+          title="Social Media Mentions"
+          value={data.socialMediaMentions}
+          icon={<Brain className="w-5 h-5 text-primary" />}
+        />
+        <SentimentCard
+          title="Trend Strength"
+          value={data.trendStrength}
+          icon={<Brain className="w-5 h-5 text-primary" />}
+        />
       </div>
     </div>
   );
