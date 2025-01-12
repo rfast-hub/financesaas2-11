@@ -38,10 +38,6 @@ const SubscriptionManagement = () => {
         throw error;
       }
       
-      if (!data) {
-        console.log('No active subscription found for user:', session.user.id);
-      }
-      
       return data;
     },
   });
@@ -52,25 +48,19 @@ const SubscriptionManagement = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      // Check if there's an active subscription before attempting to cancel
-      if (!subscription) {
-        throw new Error('No active subscription to cancel');
-      }
-
-      const { error } = await supabase.functions.invoke('cancel-subscription', {
+      const response = await supabase.functions.invoke('cancel-subscription', {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      if (error) {
-        console.error('Error canceling subscription:', error);
-        // Check for specific error messages
-        if (error.message?.includes('No active subscription')) {
-          throw new Error('You don\'t have an active subscription to cancel');
-        }
-        throw error;
+      if (response.error) {
+        console.error('Error from Edge Function:', response.error);
+        const errorData = JSON.parse(response.error.message);
+        throw new Error(errorData.error || 'Failed to cancel subscription');
       }
+
+      return response.data;
     },
     onSuccess: () => {
       toast({
