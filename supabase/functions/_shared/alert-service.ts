@@ -17,22 +17,30 @@ export function isAlertTriggered(alert: PriceAlert, cryptoData: CryptoData): boo
     current_volume: cryptoData.total_volume,
   });
 
+  // Convert prices to numbers and round to 2 decimal places for consistent comparison
+  const currentPrice = Number(cryptoData.current_price.toFixed(2));
+  const targetPrice = alert.target_price ? Number(alert.target_price.toFixed(2)) : null;
+
   switch (alert.alert_type) {
     case 'price':
-      if (!alert.target_price) return false;
+      if (!targetPrice) return false;
       return alert.condition === 'above' 
-        ? cryptoData.current_price >= alert.target_price
-        : cryptoData.current_price <= alert.target_price;
+        ? currentPrice >= targetPrice
+        : currentPrice <= targetPrice;
     
     case 'percentage':
       if (!alert.percentage_change) return false;
+      const currentPercentage = Number(cryptoData.price_change_percentage_24h.toFixed(2));
+      const targetPercentage = Number(alert.percentage_change.toFixed(2));
       return alert.condition === 'above'
-        ? cryptoData.price_change_percentage_24h >= alert.percentage_change
-        : cryptoData.price_change_percentage_24h <= alert.percentage_change;
+        ? currentPercentage >= targetPercentage
+        : currentPercentage <= targetPercentage;
     
     case 'volume':
       if (!alert.volume_threshold) return false;
-      return cryptoData.total_volume >= alert.volume_threshold;
+      const currentVolume = Math.floor(cryptoData.total_volume);
+      const targetVolume = Math.floor(alert.volume_threshold);
+      return currentVolume >= targetVolume;
     
     default:
       return false;
