@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Brain, TrendingUp, TrendingDown, MinusCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 interface SentimentData {
   overallSentiment: 'bullish' | 'bearish' | 'neutral';
@@ -12,7 +13,13 @@ interface SentimentData {
 
 const fetchSentimentData = async (): Promise<SentimentData> => {
   const { data, error } = await supabase.functions.invoke('get-market-sentiment')
-  if (error) throw error
+  if (error) {
+    console.error('Error fetching sentiment data:', error)
+    throw new Error('Failed to fetch market sentiment')
+  }
+  if (!data) {
+    throw new Error('No data received from sentiment analysis')
+  }
   return data
 }
 
@@ -21,6 +28,15 @@ const SentimentAnalysis = () => {
     queryKey: ['marketSentiment'],
     queryFn: fetchSentimentData,
     refetchInterval: 5 * 60 * 1000, // Refetch every 5 minutes
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Error",
+          description: "Failed to load market sentiment data. Please try again later.",
+          variant: "destructive",
+        });
+      }
+    }
   });
 
   const getSentimentIcon = (sentiment: string) => {

@@ -13,44 +13,68 @@ serve(async (req) => {
 
   try {
     const API_KEY = Deno.env.get('ALPHA_VANTAGE_API_KEY')
-    
-    // Fetch news sentiment for Bitcoin from Alpha Vantage
-    const response = await fetch(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=CRYPTO:BTC&apikey=${API_KEY}`)
-    const data = await response.json()
+    if (!API_KEY) {
+      throw new Error('API key not configured')
+    }
 
-    // Calculate sentiment metrics
+    const response = await fetch(`https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=CRYPTO:BTC&apikey=${API_KEY}`)
+    if (!response.ok) {
+      throw new Error('Failed to fetch data from Alpha Vantage')
+    }
+
+    const data = await response.json()
+    if (!data.feed || !Array.isArray(data.feed)) {
+      return new Response(
+        JSON.stringify({
+          overallSentiment: 'neutral',
+          sentimentScore: 50,
+          socialMediaMentions: 0,
+          trendStrength: 50
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
     let totalSentiment = 0
-    let mentionsCount = 0
+    let mentionsCount = data.feed.length
     let bullishCount = 0
     let bearishCount = 0
 
-    data.feed?.forEach((item: any) => {
-      mentionsCount++
+    data.feed.forEach((item: any) => {
       const sentiment = parseFloat(item.overall_sentiment_score)
-      totalSentiment += sentiment
-      
-      if (sentiment > 0.2) bullishCount++
-      if (sentiment < -0.2) bearishCount++
+      if (!isNaN(sentiment)) {
+        totalSentiment += sentiment
+        if (sentiment > 0.2) bullishCount++
+        if (sentiment < -0.2) bearishCount++
+      }
     })
 
-    const averageSentiment = totalSentiment / mentionsCount
-    const sentimentScore = ((averageSentiment + 1) / 2) * 100 // Convert to 0-100 scale
-    const trendStrength = Math.abs((bullishCount - bearishCount) / mentionsCount) * 100
+    const averageSentiment = mentionsCount > 0 ? totalSentiment / mentionsCount : 0
+    const sentimentScore = Math.round(((averageSentiment + 1) / 2) * 100)
+    const trendStrength = mentionsCount > 0 
+      ? Math.round(Math.abs((bullishCount - bearishCount) / mentionsCount) * 100)
+      : 50
 
     const result = {
       overallSentiment: bullishCount > bearishCount ? 'bullish' : bearishCount > bullishCount ? 'bearish' : 'neutral',
-      sentimentScore: Math.round(sentimentScore),
+      sentimentScore: Math.min(Math.max(sentimentScore, 0), 100), // Ensure between 0-100
       socialMediaMentions: mentionsCount,
-      trendStrength: Math.round(trendStrength)
+      trendStrength: Math.min(Math.max(trendStrength, 0), 100) // Ensure between 0-100
     }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.error('Error in get-market-sentiment:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
   }
 })
