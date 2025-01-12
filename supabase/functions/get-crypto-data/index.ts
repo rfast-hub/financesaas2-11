@@ -30,7 +30,6 @@ serve(async (req) => {
 
     console.log('Fetching crypto data from CoinAPI...');
 
-    // Fetch exchange rates and 24h data in a single call for each symbol
     const cryptoPromises = COIN_SYMBOLS.map(async (symbol) => {
       try {
         // Get current rate
@@ -49,12 +48,10 @@ serve(async (req) => {
         
         const rateData = await rateResponse.json();
         
-        // Get 24h historical data using time-series endpoint
-        const timeEnd = new Date().toISOString();
-        const timeStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        
-        const historyResponse = await fetch(
-          `https://rest.coinapi.io/v1/exchangerate/${symbol}/USD/history?period_id=1HRS&time_start=${timeStart}&time_end=${timeEnd}`,
+        // Get 24h historical data
+        const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const yesterdayResponse = await fetch(
+          `https://rest.coinapi.io/v1/exchangerate/${symbol}/USD?time=${yesterday.toISOString()}`,
           {
             headers: {
               'X-CoinAPI-Key': apiKey,
@@ -62,18 +59,33 @@ serve(async (req) => {
           }
         );
 
-        if (!historyResponse.ok) {
-          throw new Error(`Failed to fetch history for ${symbol}: ${historyResponse.statusText}`);
+        if (!yesterdayResponse.ok) {
+          throw new Error(`Failed to fetch historical data for ${symbol}: ${yesterdayResponse.statusText}`);
         }
 
-        const historyData = await historyResponse.json();
+        const yesterdayData = await yesterdayResponse.json();
         
-        // Calculate 24h change and volume
-        const oldPrice = historyData[0]?.rate_open || rateData.rate;
-        const priceChange = ((rateData.rate - oldPrice) / oldPrice) * 100;
-        
-        // Estimate volume from available data
-        const volume = historyData.reduce((acc: number, curr: any) => acc + (curr.volume || 0), 0);
+        // Calculate 24h change
+        const priceChange = ((rateData.rate - yesterdayData.rate) / yesterdayData.rate) * 100;
+
+        // Get volume data (last 24h trades)
+        const volumeResponse = await fetch(
+          `https://rest.coinapi.io/v1/trades/${symbol}/USD/history?time_start=${yesterday.toISOString()}`,
+          {
+            headers: {
+              'X-CoinAPI-Key': apiKey,
+            },
+          }
+        );
+
+        let volume = 0;
+        if (volumeResponse.ok) {
+          const trades = await volumeResponse.json();
+          volume = trades.reduce((acc: number, trade: any) => 
+            acc + (trade.price * trade.size), 0);
+        } else {
+          console.warn(`Could not fetch volume data for ${symbol}, using 0`);
+        }
 
         return {
           name: getCryptoName(symbol),
@@ -85,11 +97,20 @@ serve(async (req) => {
         };
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
-        throw error;
+        // Return fallback data for this symbol
+        return {
+          name: getCryptoName(symbol),
+          symbol: symbol.toLowerCase(),
+          current_price: 0,
+          price_change_percentage_24h: 0,
+          total_volume: 0,
+          image: `${ICON_BASE_URL}/${symbol.toLowerCase()}.png`,
+        };
       }
     });
 
     const cryptoData = await Promise.all(cryptoPromises);
+    console.log('Processed crypto data:', cryptoData);
 
     return new Response(JSON.stringify(cryptoData), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -98,7 +119,7 @@ serve(async (req) => {
     console.error('Error in get-crypto-data:', error);
     return new Response(
       JSON.stringify({
-        error: error.message || 'Failed to fetch cryptocurrency data',
+        error: error instanceof Error ? error.message : 'Failed to fetch cryptocurrency data',
       }),
       {
         status: 500,
