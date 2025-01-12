@@ -8,6 +8,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 interface AIAlertButtonProps {
   cryptocurrency: string;
@@ -37,9 +38,17 @@ export const AIAlertButton = ({ cryptocurrency }: AIAlertButtonProps) => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["price-alerts"] });
+      
+      // Show a toast with the detailed analysis
       toast({
-        title: "AI Alert Created",
-        description: data.message || "AI-powered alert created successfully!",
+        title: "AI Alerts Created",
+        description: data.message,
+      });
+
+      // Show additional details in a separate toast
+      toast({
+        title: "AI Analysis Details",
+        description: "Multiple alerts have been created based on AI analysis. Check your alerts list for details.",
       });
     },
     onError: (error) => {
@@ -60,17 +69,25 @@ export const AIAlertButton = ({ cryptocurrency }: AIAlertButtonProps) => {
           variant="outline"
           onClick={() => createAIAlert.mutate()}
           disabled={createAIAlert.isPending}
+          className="w-full sm:w-auto"
         >
           {createAIAlert.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Brain className="h-4 w-4" />
           )}
-          <span className="ml-2">AI Alert</span>
+          <span className="ml-2">AI Analysis & Alerts</span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent>
-        Create an AI-powered alert based on market analysis
+      <TooltipContent className="max-w-xs">
+        <p>Create AI-powered alerts based on comprehensive market analysis including:</p>
+        <ul className="list-disc ml-4 mt-2">
+          <li>Price targets</li>
+          <li>Percentage thresholds</li>
+          <li>Confidence scoring</li>
+          <li>Risk assessment</li>
+          <li>Timeframe predictions</li>
+        </ul>
       </TooltipContent>
     </Tooltip>
   );
