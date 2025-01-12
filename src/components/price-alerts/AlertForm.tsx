@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,112 +8,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { validateAlertInput, AlertType } from "./utils/validation";
 import { PriceAlertFields } from "./alert-types/PriceAlertFields";
 import { PercentageAlertField } from "./alert-types/PercentageAlertField";
 import { VolumeAlertField } from "./alert-types/VolumeAlertField";
-import { AIAlertButton } from "./AIAlertButton";
-import { useCreateAlert } from "./hooks/useCreateAlert";
 
 export const AlertForm = () => {
-  const [cryptocurrency, setCryptocurrency] = useState("BTC");
+  const [cryptocurrency, setCryptocurrency] = useState("bitcoin");
+  const [alertType, setAlertType] = useState<AlertType>("price");
   const [targetPrice, setTargetPrice] = useState("");
-  const [condition, setCondition] = useState("above");
-  const [alertType, setAlertType] = useState("price");
   const [percentage, setPercentage] = useState("");
   const [volume, setVolume] = useState("");
-  const { toast } = useToast();
+  const [condition, setCondition] = useState("above");
 
-  const resetForm = () => {
-    setTargetPrice("");
-    setPercentage("");
-    setVolume("");
-  };
-
-  const createAlert = useCreateAlert(resetForm);
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    let isValid = true;
-    let errorMessage = "";
-
-    switch (alertType) {
-      case "price":
-        if (!targetPrice || isNaN(parseFloat(targetPrice)) || parseFloat(targetPrice) <= 0) {
-          isValid = false;
-          errorMessage = "Please enter a valid target price greater than 0";
-        }
-        break;
-      case "percentage":
-        if (!percentage || isNaN(parseFloat(percentage))) {
-          isValid = false;
-          errorMessage = "Please enter a valid percentage";
-        }
-        break;
-      case "volume":
-        if (!volume || isNaN(parseFloat(volume)) || parseFloat(volume) <= 0) {
-          isValid = false;
-          errorMessage = "Please enter a valid volume threshold greater than 0";
-        }
-        break;
-    }
-
-    if (!isValid) {
+    const validation = validateAlertInput(alertType, { targetPrice, percentage, volume });
+    
+    if (!validation.isValid) {
       toast({
         title: "Error",
-        description: errorMessage,
+        description: validation.errorMessage,
         variant: "destructive",
       });
       return;
     }
 
-    const alertData = {
-      cryptocurrency,
-      condition,
-      email_notification: true,
-      alert_type: alertType,
-      ...(alertType === "price" && { target_price: parseFloat(targetPrice) }),
-      ...(alertType === "percentage" && { percentage_change: parseFloat(percentage) }),
-      ...(alertType === "volume" && { volume_threshold: parseFloat(volume) }),
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
 
-    createAlert.mutate(alertData);
+      const { error } = await supabase.from("price_alerts").insert([
+        {
+          user_id: user.id,
+          cryptocurrency,
+          condition,
+          alert_type: alertType,
+          target_price: alertType === "price" ? parseFloat(targetPrice) : null,
+          percentage_change: alertType === "percentage" ? parseFloat(percentage) : null,
+          volume_threshold: alertType === "volume" ? parseFloat(volume) : null,
+        },
+      ]);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Price alert created successfully",
+      });
+
+      // Reset form
+      setTargetPrice("");
+      setPercentage("");
+      setVolume("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create price alert",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="flex gap-4 flex-wrap">
-        <Select
-          value={cryptocurrency}
-          onValueChange={setCryptocurrency}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select crypto" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="BTC">Bitcoin (BTC)</SelectItem>
-            <SelectItem value="ETH">Ethereum (ETH)</SelectItem>
-            <SelectItem value="USDT">Tether (USDT)</SelectItem>
-            <SelectItem value="BNB">Binance Coin (BNB)</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Select
+            value={cryptocurrency}
+            onValueChange={setCryptocurrency}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select cryptocurrency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bitcoin">Bitcoin</SelectItem>
+              <SelectItem value="ethereum">Ethereum</SelectItem>
+              <SelectItem value="cardano">Cardano</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Select
-          value={alertType}
-          onValueChange={(value) => {
-            setAlertType(value);
-            resetForm();
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Alert type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="price">Price Alert</SelectItem>
-            <SelectItem value="percentage">Percentage Change</SelectItem>
-            <SelectItem value="volume">Volume Alert</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid gap-2">
+          <Select
+            value={alertType}
+            onValueChange={(value: AlertType) => setAlertType(value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select alert type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="price">Price Alert</SelectItem>
+              <SelectItem value="percentage">Percentage Change</SelectItem>
+              <SelectItem value="volume">Volume Alert</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         {alertType === "price" && (
           <PriceAlertFields
@@ -138,19 +130,11 @@ export const AlertForm = () => {
             onVolumeChange={setVolume}
           />
         )}
-
-        <div className="flex gap-2">
-          <Button type="submit" disabled={createAlert.isPending}>
-            {createAlert.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              "Create Alert"
-            )}
-          </Button>
-
-          <AIAlertButton cryptocurrency={cryptocurrency} />
-        </div>
       </div>
+
+      <Button type="submit" className="w-full">
+        Create Alert
+      </Button>
     </form>
   );
 };
