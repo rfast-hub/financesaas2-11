@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { validateAlertInput, AlertType } from "./utils/validation";
 import { PriceAlertFields } from "./alert-types/PriceAlertFields";
 import { PercentageAlertField } from "./alert-types/PercentageAlertField";
@@ -22,6 +22,7 @@ export const AlertForm = () => {
   const [percentage, setPercentage] = useState("");
   const [volume, setVolume] = useState("");
   const [condition, setCondition] = useState("above");
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +31,6 @@ export const AlertForm = () => {
     
     if (!validation.isValid) {
       toast({
-        title: "Error",
         description: validation.errorMessage,
         variant: "destructive",
       });
@@ -56,7 +56,6 @@ export const AlertForm = () => {
       if (error) throw error;
 
       toast({
-        title: "Success",
         description: "Price alert created successfully",
       });
 
@@ -66,7 +65,6 @@ export const AlertForm = () => {
       setVolume("");
     } catch (error) {
       toast({
-        title: "Error",
         description: "Failed to create price alert",
         variant: "destructive",
       });
