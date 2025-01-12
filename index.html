@@ -3,15 +3,18 @@
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crypto Dashboard</title>
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://s.tradingview.com;
+  <title>simple-crypto-hub</title>
+  <meta name="description" content="GPT Engineer Generated Project" />
+  <meta name="author" content="GPT Engineer" />
+  <meta property="og:image" content="/og-image.svg" />
+  <!-- Security Headers -->
+  <meta http-equiv="Content-Security-Policy" 
+    content="default-src 'self' https://szxbgwsxosazuvkxlmdx.supabase.co; 
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.gpteng.co https://s3.tradingview.com;
     style-src 'self' 'unsafe-inline';
     img-src 'self' data: https: blob:;
-    connect-src 'self' https://*.lovableproject.com https://szxbgwsxosazuvkxlmdx.supabase.co https://api.coingecko.com wss://ws.tradingview.com;
+    connect-src 'self' https://szxbgwsxosazuvkxlmdx.supabase.co https://api.coingecko.com wss://ws.tradingview.com;
     frame-src 'self' https://s.tradingview.com;
     form-action 'self';
     base-uri 'self';
@@ -30,6 +33,7 @@
 
 <body>
   <div id="root"></div>
+  <script src="https://cdn.gpteng.co/gptengineer.js" type="module"></script>
   <script type="module" src="/src/main.tsx"></script>
 </body>
 
