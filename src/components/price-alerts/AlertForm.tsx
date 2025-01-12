@@ -8,12 +8,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { validateAlertInput, AlertType } from "./utils/validation";
 import { PriceAlertFields } from "./alert-types/PriceAlertFields";
 import { PercentageAlertField } from "./alert-types/PercentageAlertField";
 import { VolumeAlertField } from "./alert-types/VolumeAlertField";
+import { SUPPORTED_CRYPTOCURRENCIES } from "./utils/constants";
 
 export const AlertForm = () => {
   const [cryptocurrency, setCryptocurrency] = useState("bitcoin");
@@ -50,6 +50,7 @@ export const AlertForm = () => {
           target_price: alertType === "price" ? parseFloat(targetPrice) : null,
           percentage_change: alertType === "percentage" ? parseFloat(percentage) : null,
           volume_threshold: alertType === "volume" ? parseFloat(volume) : null,
+          is_active: true,
         },
       ]);
 
@@ -68,6 +69,7 @@ export const AlertForm = () => {
         description: "Failed to create price alert",
         variant: "destructive",
       });
+      console.error("Error creating price alert:", error);
     }
   };
 
@@ -83,9 +85,11 @@ export const AlertForm = () => {
               <SelectValue placeholder="Select cryptocurrency" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="bitcoin">Bitcoin</SelectItem>
-              <SelectItem value="ethereum">Ethereum</SelectItem>
-              <SelectItem value="cardano">Cardano</SelectItem>
+              {SUPPORTED_CRYPTOCURRENCIES.map((crypto) => (
+                <SelectItem key={crypto.id} value={crypto.id}>
+                  {crypto.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
