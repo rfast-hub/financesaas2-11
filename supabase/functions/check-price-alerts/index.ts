@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { corsHeaders } from '../_shared/cors.ts';
 import { getCryptoData } from '../_shared/crypto-service.ts';
 import { sendEmailAlert } from '../_shared/email-service.ts';
 import { 
@@ -8,6 +8,7 @@ import {
   markAlertAsTriggered,
   getUserEmail 
 } from '../_shared/alert-service.ts';
+import { PriceAlert } from '../_shared/types.ts';
 
 async function processAlert(alert: PriceAlert): Promise<boolean> {
   try {
@@ -37,8 +38,10 @@ async function processAlert(alert: PriceAlert): Promise<boolean> {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     console.log("Starting price alerts check...");
