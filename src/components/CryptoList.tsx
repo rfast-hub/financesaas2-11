@@ -19,18 +19,7 @@ const fetchCryptoData = async () => {
 
 // Helper function to get CoinGecko icon URL
 const getCryptoIconUrl = (symbol: string) => {
-  const symbolMap: { [key: string]: string } = {
-    btc: '1',        // Bitcoin
-    eth: '279',      // Ethereum
-    bnb: '825',      // Binance Coin
-    sol: '4128',     // Solana
-    xrp: '44'        // XRP
-  };
-  
-  const id = symbolMap[symbol.toLowerCase()];
-  return id 
-    ? `https://assets.coingecko.com/coins/images/${id}/thumb/${symbol.toLowerCase()}.png`
-    : 'https://assets.coingecko.com/coins/images/1/thumb/generic-crypto.png';
+  return `https://assets.coingecko.com/coins/images/1/thumb/generic-crypto.png`;
 };
 
 const CryptoList = () => {
@@ -84,10 +73,6 @@ const CryptoList = () => {
                       src={getCryptoIconUrl(crypto.symbol)} 
                       alt={crypto.name} 
                       className="w-8 h-8 rounded-full"
-                      onError={(e) => {
-                        // Fallback to a generic crypto icon if the image fails to load
-                        (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/1/thumb/generic-crypto.png';
-                      }}
                     />
                     <div>
                       <p className="font-medium">{crypto.name}</p>
