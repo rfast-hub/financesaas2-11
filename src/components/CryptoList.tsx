@@ -17,6 +17,20 @@ const fetchCryptoData = async () => {
   }
 };
 
+// Helper function to get CoinGecko icon URL
+const getCryptoIconUrl = (symbol: string) => {
+  const symbolMap: { [key: string]: string } = {
+    btc: 'bitcoin',
+    eth: 'ethereum',
+    bnb: 'binancecoin',
+    sol: 'solana',
+    xrp: 'ripple'
+  };
+  
+  const id = symbolMap[symbol.toLowerCase()] || symbol.toLowerCase();
+  return `https://assets.coingecko.com/coins/images/1/thumb/${id}.png`;
+};
+
 const CryptoList = () => {
   const { data: cryptos, isLoading, error } = useQuery({
     queryKey: ['cryptos'],
@@ -64,7 +78,15 @@ const CryptoList = () => {
               <tr key={crypto.symbol} className="border-t border-secondary">
                 <td className="py-4">
                   <div className="flex items-center gap-2">
-                    <img src={crypto.image} alt={crypto.name} className="w-8 h-8 rounded-full" />
+                    <img 
+                      src={getCryptoIconUrl(crypto.symbol)} 
+                      alt={crypto.name} 
+                      className="w-8 h-8 rounded-full"
+                      onError={(e) => {
+                        // Fallback to a generic crypto icon if the image fails to load
+                        (e.target as HTMLImageElement).src = 'https://assets.coingecko.com/coins/images/1/thumb/generic-crypto.png';
+                      }}
+                    />
                     <div>
                       <p className="font-medium">{crypto.name}</p>
                       <p className="text-sm text-muted-foreground">{crypto.symbol.toUpperCase()}</p>
