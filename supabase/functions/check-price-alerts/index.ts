@@ -92,12 +92,12 @@ async function checkAlert(alert: PriceAlert): Promise<boolean> {
           : currentPrice <= (alert.target_price || 0);
       
       case 'percentage':
-        // Implement percentage change check
-        return false; // TODO: Implement this
+        // For now, return false for percentage alerts
+        return false;
       
       case 'volume':
-        // Implement volume threshold check
-        return false; // TODO: Implement this
+        // For now, return false for volume alerts
+        return false;
       
       default:
         return false;
@@ -109,12 +109,15 @@ async function checkAlert(alert: PriceAlert): Promise<boolean> {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-
   try {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { 
+        headers: corsHeaders,
+        status: 204
+      });
+    }
+
     console.log("Starting price alerts check...");
     
     // Get all active price alerts
@@ -124,15 +127,30 @@ Deno.serve(async (req) => {
       .eq('is_active', true)
       .is('triggered_at', null);
 
-    if (alertsError) throw alertsError;
+    if (alertsError) {
+      console.error('Error fetching alerts:', alertsError);
+      throw alertsError;
+    }
+
     console.log(`Found ${alerts?.length || 0} active alerts to check`);
 
     if (!alerts || alerts.length === 0) {
       return new Response(
-        JSON.stringify({ status: 'success', message: 'No active alerts to check' }), 
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          status: 'success', 
+          message: 'No active alerts to check' 
+        }), 
+        { 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json' 
+          },
+          status: 200
+        }
       );
     }
+
+    const processedAlerts = [];
 
     for (const alert of alerts as PriceAlert[]) {
       console.log(`Checking alert ${alert.id} for ${alert.cryptocurrency}`);
@@ -147,10 +165,17 @@ Deno.serve(async (req) => {
           const { data: userData, error: userError } = await supabase
             .auth.admin.getUserById(alert.user_id);
 
-          if (userError) throw userError;
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            continue;
+          }
 
           if (alert.email_notification && userData?.user?.email) {
-            await sendEmailAlert(userData.user.email, alert, await getCurrentPrice(alert.cryptocurrency));
+            await sendEmailAlert(
+              userData.user.email, 
+              alert, 
+              await getCurrentPrice(alert.cryptocurrency)
+            );
           }
 
           // Update alert status
@@ -162,27 +187,47 @@ Deno.serve(async (req) => {
             })
             .eq('id', alert.id);
 
-          if (updateError) throw updateError;
+          if (updateError) {
+            console.error('Error updating alert:', updateError);
+            continue;
+          }
+
+          processedAlerts.push(alert.id);
           console.log(`Alert ${alert.id} marked as triggered`);
         }
       } catch (error) {
         console.error(`Error processing alert ${alert.id}:`, error);
-        // Continue with next alert instead of failing the entire batch
         continue;
       }
     }
 
     return new Response(
-      JSON.stringify({ status: 'success', message: 'Alerts checked successfully' }), 
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        status: 'success', 
+        message: 'Alerts checked successfully',
+        processed: processedAlerts
+      }), 
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
+        status: 200
+      }
     );
   } catch (error) {
     console.error('Error processing price alerts:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), 
+      JSON.stringify({ 
+        error: error.message || 'Internal server error',
+        status: 'error'
+      }), 
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
       }
     );
   }
