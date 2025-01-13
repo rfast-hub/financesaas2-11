@@ -5,6 +5,7 @@ import AIPredictions from "@/components/AIPredictions";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
 import { AITradingInsights } from "@/components/ai/AITradingInsights";
+import TradingSignals from "@/components/trading/TradingSignals";
 import { ChartLine, Brain, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,6 +72,7 @@ const Index = () => {
             </div>
             <SentimentAnalysis />
             <AITradingInsights />
+            <TradingSignals />
             <AIPredictions />
           </div>
           <div className="space-y-8">
