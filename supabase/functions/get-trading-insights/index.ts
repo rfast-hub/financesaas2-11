@@ -35,19 +35,19 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a cryptocurrency trading expert. Analyze the current market conditions for Bitcoin (current price: $${currentPrice}). 
-            IMPORTANT: You must return ONLY a JSON object with this exact structure, no additional text or explanation:
-            {
-              "recommendation": "Buy" | "Sell" | "Hold",
-              "confidence": <number between 0-100>,
-              "reasoning": "<brief explanation>",
-              "risks": ["<risk1>", "<risk2>", ...],
-              "opportunities": ["<opportunity1>", "<opportunity2>", ...]
-            }`
+            content: `You are a cryptocurrency trading expert. Your task is to analyze Bitcoin's current market conditions (price: $${currentPrice}) and return ONLY a JSON object in this exact format:
+{
+  "recommendation": "Buy" | "Sell" | "Hold",
+  "confidence": <number 0-100>,
+  "reasoning": "<1-2 sentence explanation>",
+  "risks": ["<risk1>", "<risk2>", "<risk3>"],
+  "opportunities": ["<opportunity1>", "<opportunity2>", "<opportunity3>"]
+}
+Do not include any other text, only return the JSON object.`
           },
           {
             role: 'user',
-            content: 'Generate current trading insights for Bitcoin in the specified JSON format.'
+            content: 'Generate Bitcoin trading insights in the specified JSON format.'
           }
         ],
         temperature: 0.7,
@@ -73,8 +73,25 @@ serve(async (req) => {
       const insights = JSON.parse(cleanContent);
       console.log('Parsed insights:', insights);
 
-      if (!insights.recommendation || !Array.isArray(insights.risks) || !Array.isArray(insights.opportunities)) {
-        throw new Error('Invalid insights format');
+      // Validate the response structure
+      if (!insights.recommendation || 
+          !insights.confidence || 
+          !insights.reasoning || 
+          !Array.isArray(insights.risks) || 
+          !Array.isArray(insights.opportunities)) {
+        throw new Error('Response missing required fields');
+      }
+
+      // Ensure recommendation is valid
+      if (!['Buy', 'Sell', 'Hold'].includes(insights.recommendation)) {
+        throw new Error('Invalid recommendation value');
+      }
+
+      // Ensure confidence is a number between 0-100
+      if (typeof insights.confidence !== 'number' || 
+          insights.confidence < 0 || 
+          insights.confidence > 100) {
+        throw new Error('Invalid confidence value');
       }
 
       return new Response(
@@ -87,7 +104,7 @@ serve(async (req) => {
         }
       );
     } catch (parseError) {
-      console.error('JSON parsing error:', parseError);
+      console.error('JSON parsing error:', parseError, 'Content:', cleanContent);
       throw new Error(`Failed to parse OpenAI response: ${parseError.message}`);
     }
   } catch (error) {
