@@ -1,5 +1,21 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { Configuration, OpenAIApi } from 'https://esm.sh/openai@3.3.0';
+
+// Define interfaces for type safety
+interface TradingInsight {
+  recommendation: 'Buy' | 'Sell' | 'Hold';
+  confidence: number;
+  reasoning: string;
+  risks: string[];
+  opportunities: string[];
+}
+
+interface CoinGeckoResponse {
+  bitcoin: {
+    usd: number;
+  };
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,119 +23,116 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    console.log('Fetching trading insights from OpenAI...');
+    // Fetch current Bitcoin price
+    const priceResponse = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
+    );
     
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured');
+    if (!priceResponse.ok) {
+      throw new Error('Failed to fetch Bitcoin price');
     }
 
-    // Fetch current Bitcoin price from CoinGecko
-    const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-    const priceData = await priceResponse.json();
-    const currentPrice = priceData.bitcoin?.usd || 'unknown';
+    const priceData: CoinGeckoResponse = await priceResponse.json();
+    const currentPrice = priceData.bitcoin.usd;
+    console.log('Current BTC price:', currentPrice);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a cryptocurrency trading expert. Your task is to analyze Bitcoin's current market conditions (price: $${currentPrice}) and return ONLY a JSON object in this exact format:
+    // Initialize OpenAI
+    const configuration = new Configuration({
+      apiKey: Deno.env.get('OPENAI_API_KEY'),
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // Generate insights using OpenAI
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: [
+        {
+          role: 'system',
+          content: `You are a cryptocurrency trading expert. Analyze Bitcoin's current market conditions (price: $${currentPrice}) and provide insights.
+IMPORTANT: Return ONLY a JSON object with this EXACT structure:
 {
   "recommendation": "Buy" | "Sell" | "Hold",
-  "confidence": <number 0-100>,
-  "reasoning": "<1-2 sentence explanation>",
-  "risks": ["<risk1>", "<risk2>", "<risk3>"],
-  "opportunities": ["<opportunity1>", "<opportunity2>", "<opportunity3>"]
+  "confidence": <number between 0-100>,
+  "reasoning": "<concise explanation>",
+  "risks": ["<specific risk 1>", "<specific risk 2>", "<specific risk 3>"],
+  "opportunities": ["<specific opportunity 1>", "<specific opportunity 2>", "<specific opportunity 3>"]
 }
-Do not include any other text, only return the JSON object.`
-          },
-          {
-            role: 'user',
-            content: 'Generate Bitcoin trading insights in the specified JSON format.'
-          }
-        ],
-        temperature: 0.7,
-      }),
+Do not include ANY additional text or explanation outside the JSON structure.`
+        },
+        {
+          role: 'user',
+          content: 'Generate current Bitcoin trading insights.'
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
     });
 
-    if (!response.ok) {
-      console.error('OpenAI API error:', response.status, await response.text());
-      throw new Error(`OpenAI API error: ${response.status}`);
+    if (!completion.data.choices[0].message?.content) {
+      throw new Error('No response from OpenAI');
     }
 
-    const data = await response.json();
-    console.log('Received response from OpenAI:', data);
-
-    if (!data.choices?.[0]?.message?.content) {
-      throw new Error('Invalid response format from OpenAI');
-    }
-
-    const cleanContent = data.choices[0].message.content.trim();
-    console.log('Cleaned content:', cleanContent);
+    const content = completion.data.choices[0].message.content;
+    console.log('Raw OpenAI response:', content);
 
     try {
-      const insights = JSON.parse(cleanContent);
-      console.log('Parsed insights:', insights);
+      // Clean the response and parse JSON
+      const cleanContent = content.trim();
+      const insights: TradingInsight = JSON.parse(cleanContent);
+      
+      // Validate response structure
+      const validateInsights = (data: any): data is TradingInsight => {
+        return (
+          typeof data === 'object' &&
+          ['Buy', 'Sell', 'Hold'].includes(data.recommendation) &&
+          typeof data.confidence === 'number' &&
+          data.confidence >= 0 &&
+          data.confidence <= 100 &&
+          typeof data.reasoning === 'string' &&
+          Array.isArray(data.risks) &&
+          Array.isArray(data.opportunities) &&
+          data.risks.every((risk: any) => typeof risk === 'string') &&
+          data.opportunities.every((opp: any) => typeof opp === 'string')
+        );
+      };
 
-      // Validate the response structure
-      if (!insights.recommendation || 
-          !insights.confidence || 
-          !insights.reasoning || 
-          !Array.isArray(insights.risks) || 
-          !Array.isArray(insights.opportunities)) {
-        throw new Error('Response missing required fields');
-      }
-
-      // Ensure recommendation is valid
-      if (!['Buy', 'Sell', 'Hold'].includes(insights.recommendation)) {
-        throw new Error('Invalid recommendation value');
-      }
-
-      // Ensure confidence is a number between 0-100
-      if (typeof insights.confidence !== 'number' || 
-          insights.confidence < 0 || 
-          insights.confidence > 100) {
-        throw new Error('Invalid confidence value');
+      if (!validateInsights(insights)) {
+        console.error('Invalid insights format:', insights);
+        throw new Error('Response format validation failed');
       }
 
       return new Response(
         JSON.stringify(insights),
-        { 
-          headers: { 
-            ...corsHeaders, 
-            'Content-Type': 'application/json' 
-          } 
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
         }
       );
     } catch (parseError) {
-      console.error('JSON parsing error:', parseError, 'Content:', cleanContent);
+      console.error('JSON parsing error:', parseError, 'Content:', content);
       throw new Error(`Failed to parse OpenAI response: ${parseError.message}`);
     }
   } catch (error) {
-    console.error('Error in get-trading-insights:', error);
+    console.error('Error generating insights:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: 'Failed to generate trading insights',
-        details: error.message 
+        details: error.message
       }),
-      { 
+      {
         status: 500,
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json' 
-        }
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+        },
       }
     );
   }
