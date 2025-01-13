@@ -4,7 +4,16 @@ import { useAlerts } from "./hooks/useAlerts";
 import { toast } from "sonner";
 
 export const AlertList = () => {
-  const { data: alerts, isLoading, error } = useAlerts();
+  const { data: alerts, isLoading, error, refetch } = useAlerts();
+
+  // Refresh alerts every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [refetch]);
 
   if (isLoading) {
     return (

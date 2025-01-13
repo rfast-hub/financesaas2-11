@@ -1,4 +1,6 @@
 project_id = "szxbgwsxosazuvkxlmdx"
 
-[api]
-enabled = true
+[check-alerts-cron]
+verify_jwt = false
+[check-alerts-cron.cron]
+schedule = "* * * * *"
