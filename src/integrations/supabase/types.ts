@@ -16,6 +16,7 @@ export type Database = {
           alert_type: string | null
           condition: string
           created_at: string | null
+          creation_price: number | null
           cryptocurrency: string
           email_notification: boolean | null
           id: string
@@ -32,6 +33,7 @@ export type Database = {
           alert_type?: string | null
           condition: string
           created_at?: string | null
+          creation_price?: number | null
           cryptocurrency: string
           email_notification?: boolean | null
           id?: string
@@ -48,6 +50,7 @@ export type Database = {
           alert_type?: string | null
           condition?: string
           created_at?: string | null
+          creation_price?: number | null
           cryptocurrency?: string
           email_notification?: boolean | null
           id?: string

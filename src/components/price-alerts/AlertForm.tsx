@@ -24,6 +24,19 @@ export const AlertForm = () => {
   const [condition, setCondition] = useState("above");
   const { toast } = useToast();
 
+  const getCurrentPrice = async (crypto: string): Promise<number | null> => {
+    try {
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`
+      );
+      const data = await response.json();
+      return data[crypto]?.usd || null;
+    } catch (error) {
+      console.error("Error fetching current price:", error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -41,6 +54,16 @@ export const AlertForm = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("User not authenticated");
 
+      // Get current price before creating the alert
+      const currentPrice = await getCurrentPrice(cryptocurrency);
+      if (!currentPrice) {
+        toast({
+          description: "Failed to fetch current price. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase.from("price_alerts").insert([
         {
           user_id: user.id,
@@ -51,6 +74,7 @@ export const AlertForm = () => {
           percentage_change: alertType === "percentage" ? parseFloat(percentage) : null,
           volume_threshold: alertType === "volume" ? parseFloat(volume) : null,
           is_active: true,
+          creation_price: currentPrice,
         },
       ]);
 
