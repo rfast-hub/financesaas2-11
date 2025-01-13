@@ -96,6 +96,23 @@ const Index = () => {
             Manage Subscription
           </Button>
         </div>
+
+        {/* Footer */}
+        <footer className="border-t border-white/10 mt-12 pt-8 pb-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted-foreground">
+            <div>
+              © {new Date().getFullYear()} Crypto Dashboard. All rights reserved.
+            </div>
+            <div className="flex gap-6">
+              <a href="#" className="hover:text-primary transition-colors">
+                Terms and Conditions
+              </a>
+              <a href="#" className="hover:text-primary transition-colors">
+                Privacy Policy
+              </a>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );
