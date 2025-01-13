@@ -80,15 +80,6 @@ const Index = () => {
             <CryptoList />
           </div>
         </div>
-
-        <footer className="text-center py-4 text-sm text-muted-foreground space-y-2">
-          <div>© {new Date().getFullYear()} CryptoTrack. All rights reserved.</div>
-          <div className="flex justify-center space-x-4">
-            <a href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</a>
-            <span>•</span>
-            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
-          </div>
-        </footer>
       </div>
     </div>
   );
