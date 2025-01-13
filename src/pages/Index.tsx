@@ -6,7 +6,7 @@ import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
 import { AITradingInsights } from "@/components/ai/AITradingInsights";
 import TradingSignals from "@/components/trading/TradingSignals";
-import { ChartLine, Brain, LogOut } from "lucide-react";
+import { ChartLine, Brain, LogOut, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -79,6 +79,17 @@ const Index = () => {
             <PriceAlerts />
             <CryptoList />
           </div>
+        </div>
+
+        {/* Subscription Management Button */}
+        <div className="flex justify-center pt-8 pb-4">
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2 px-6 py-3 text-lg"
+          >
+            <CreditCard className="w-5 h-5" />
+            Manage Subscription
+          </Button>
         </div>
       </div>
     </div>
