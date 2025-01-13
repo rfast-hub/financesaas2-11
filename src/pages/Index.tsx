@@ -32,6 +32,10 @@ const Index = () => {
     }
   };
 
+  const handleManageSubscription = () => {
+    window.open('https://billing.stripe.com/p/login/aEUeX67rfdiYeruaEE', '_blank');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -86,6 +90,7 @@ const Index = () => {
           <Button
             variant="secondary"
             className="flex items-center gap-2 px-6 py-3 text-lg"
+            onClick={handleManageSubscription}
           >
             <CreditCard className="w-5 h-5" />
             Manage Subscription
