@@ -27,6 +27,24 @@ serve(async (req) => {
       throw new Error("No email found");
     }
 
+    // First check if there's an active subscription in our database
+    const { data: subscriptionData, error: subscriptionError } = await supabaseClient
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "active")
+      .single();
+
+    if (subscriptionError || !subscriptionData) {
+      return new Response(
+        JSON.stringify({ error: "No active subscription found in database" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
+    }
+
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2023-10-16",
     });
@@ -37,7 +55,13 @@ serve(async (req) => {
     });
 
     if (customers.data.length === 0) {
-      throw new Error("No customer found");
+      return new Response(
+        JSON.stringify({ error: "No Stripe customer found" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     const subscriptions = await stripe.subscriptions.list({
@@ -47,7 +71,23 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
-      throw new Error("No active subscription found");
+      // Update our database to reflect that there's no active Stripe subscription
+      await supabaseClient
+        .from("subscriptions")
+        .update({
+          status: "inactive",
+          is_active: false,
+          canceled_at: new Date().toISOString(),
+        })
+        .eq("id", subscriptionData.id);
+
+      return new Response(
+        JSON.stringify({ error: "No active Stripe subscription found" }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        }
+      );
     }
 
     // Cancel at period end to maintain access until the end of the billing period
@@ -62,7 +102,7 @@ serve(async (req) => {
         status: "canceled",
         canceled_at: new Date().toISOString(),
       })
-      .eq("user_id", user.id);
+      .eq("id", subscriptionData.id);
 
     if (updateError) throw updateError;
 
@@ -74,6 +114,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
+    console.error("Error in cancel-subscription:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
