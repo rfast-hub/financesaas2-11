@@ -32,13 +32,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a cryptocurrency trading expert. Analyze the current market conditions and provide insights in this exact JSON format:
+            content: `You are a cryptocurrency trading expert. Analyze the current market conditions and provide insights. 
+            Return ONLY a valid JSON object with this exact structure, no other text:
             {
-              "recommendation": "buy" | "sell" | "hold",
-              "confidence": <number between 0-1>,
-              "reasoning": "<clear explanation>",
-              "risks": ["<specific risk 1>", "<specific risk 2>", "<specific risk 3>"],
-              "opportunities": ["<specific opportunity 1>", "<specific opportunity 2>", "<specific opportunity 3>"]
+              "recommendation": "buy",
+              "confidence": 0.75,
+              "reasoning": "Clear explanation here",
+              "risks": ["risk1", "risk2", "risk3"],
+              "opportunities": ["opportunity1", "opportunity2", "opportunity3"]
             }`
           },
           {
@@ -61,36 +62,55 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log('Perplexity response:', JSON.stringify(data));
+    console.log('Raw Perplexity response:', JSON.stringify(data));
 
     const content = data.choices[0]?.message?.content;
     if (!content) {
+      console.error('Invalid response structure:', data);
       throw new Error('Invalid response from Perplexity');
     }
 
-    // Parse the JSON string from the content
+    // Try to parse the content as JSON, handling both string and object cases
     let insight;
     try {
-      insight = JSON.parse(content);
+      // Check if content is already an object
+      if (typeof content === 'object') {
+        insight = content;
+      } else {
+        // Try to parse it as JSON string
+        insight = JSON.parse(content);
+      }
+      
+      console.log('Parsed insight:', insight);
+
+      // Validate the insight structure
+      if (!insight.recommendation || 
+          typeof insight.confidence !== 'number' || 
+          !insight.reasoning ||
+          !Array.isArray(insight.risks) ||
+          !Array.isArray(insight.opportunities)) {
+        throw new Error('Invalid insight format');
+      }
+
+      // Ensure recommendation is one of the expected values
+      if (!['buy', 'sell', 'hold'].includes(insight.recommendation)) {
+        throw new Error('Invalid recommendation value');
+      }
+
+      // Ensure confidence is between 0 and 1
+      if (insight.confidence < 0 || insight.confidence > 1) {
+        insight.confidence = Math.max(0, Math.min(1, insight.confidence));
+      }
+
+      return new Response(JSON.stringify(insight), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
     } catch (error) {
-      console.error('Error parsing Perplexity response:', error);
+      console.error('Error parsing content:', error);
       console.error('Raw content:', content);
       throw new Error('Failed to parse Perplexity response');
     }
-
-    // Validate the response structure
-    if (!insight.recommendation || 
-        typeof insight.confidence !== 'number' || 
-        !insight.reasoning ||
-        !Array.isArray(insight.risks) ||
-        !Array.isArray(insight.opportunities)) {
-      console.error('Invalid insight format:', insight);
-      throw new Error('Invalid insight format from Perplexity');
-    }
-
-    return new Response(JSON.stringify(insight), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
 
   } catch (error) {
     console.error('Error in get-trading-insights:', error);
