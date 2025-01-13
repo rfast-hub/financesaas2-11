@@ -14,6 +14,7 @@ import { PriceAlertFields } from "./alert-types/PriceAlertFields";
 import { PercentageAlertField } from "./alert-types/PercentageAlertField";
 import { VolumeAlertField } from "./alert-types/VolumeAlertField";
 import { SUPPORTED_CRYPTOCURRENCIES } from "./utils/constants";
+import { Loader2 } from "lucide-react";
 
 export const AlertForm = () => {
   const [cryptocurrency, setCryptocurrency] = useState("bitcoin");
@@ -22,14 +23,22 @@ export const AlertForm = () => {
   const [percentage, setPercentage] = useState("");
   const [volume, setVolume] = useState("");
   const [condition, setCondition] = useState("above");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const getCurrentPrice = async (crypto: string): Promise<number | null> => {
     try {
+      console.log(`Fetching current price for ${crypto}...`);
       const response = await fetch(
         `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`
       );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch price: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Price data:', data);
       return data[crypto]?.usd || null;
     } catch (error) {
       console.error("Error fetching current price:", error);
@@ -40,19 +49,31 @@ export const AlertForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const validation = validateAlertInput(alertType, { targetPrice, percentage, volume });
-    
-    if (!validation.isValid) {
-      toast({
-        description: validation.errorMessage,
-        variant: "destructive",
-      });
+    if (isSubmitting) {
       return;
     }
 
+    setIsSubmitting(true);
+    
     try {
+      const validation = validateAlertInput(alertType, { targetPrice, percentage, volume });
+      
+      if (!validation.isValid) {
+        toast({
+          description: validation.errorMessage,
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("User not authenticated");
+      if (!user) {
+        toast({
+          description: "Please sign in to create alerts",
+          variant: "destructive",
+        });
+        return;
+      }
 
       // Get current price before creating the alert
       const currentPrice = await getCurrentPrice(cryptocurrency);
@@ -63,6 +84,16 @@ export const AlertForm = () => {
         });
         return;
       }
+
+      console.log('Creating alert with data:', {
+        cryptocurrency,
+        alertType,
+        targetPrice,
+        percentage,
+        volume,
+        condition,
+        currentPrice
+      });
 
       const { error } = await supabase.from("price_alerts").insert([
         {
@@ -89,11 +120,13 @@ export const AlertForm = () => {
       setPercentage("");
       setVolume("");
     } catch (error) {
+      console.error("Error creating price alert:", error);
       toast({
-        description: "Failed to create price alert",
+        description: "Failed to create price alert. Please try again.",
         variant: "destructive",
       });
-      console.error("Error creating price alert:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -158,8 +191,19 @@ export const AlertForm = () => {
         )}
       </div>
 
-      <Button type="submit" className="w-full">
-        Create Alert
+      <Button 
+        type="submit" 
+        className="w-full"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Creating Alert...
+          </>
+        ) : (
+          'Create Alert'
+        )}
       </Button>
     </form>
   );
