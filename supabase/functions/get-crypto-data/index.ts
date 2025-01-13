@@ -28,6 +28,12 @@ serve(async (req) => {
   }
 
   try {
+    const apiKey = Deno.env.get('COINGECKO_API_KEY');
+    if (!apiKey) {
+      console.error('CoinGecko API key not found');
+      throw new Error('CoinGecko API key not configured');
+    }
+
     const { limit } = await req.json();
     const cryptoSymbols = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'ripple'].slice(0, limit || 5);
     
@@ -36,20 +42,26 @@ serve(async (req) => {
     const cryptoDataPromises = cryptoSymbols.map(async (symbol) => {
       try {
         const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
-        console.log(`Fetching data for ${mappedSymbol} from CoinGecko...`);
+        console.log(`Fetching data for ${mappedSymbol} from CoinGecko Pro API...`);
         
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${mappedSymbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`,
-          {
-            headers: {
-              'Accept': 'application/json',
-            }
+        const url = `https://pro-api.coingecko.com/api/v3/simple/price?ids=${mappedSymbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
+        console.log('Request URL:', url);
+
+        const response = await fetch(url, {
+          headers: {
+            'Accept': 'application/json',
+            'X-CG-Pro-API-Key': apiKey,
           }
-        );
+        });
         
         if (!response.ok) {
-          console.error(`CoinGecko API error for ${mappedSymbol}:`, response.status, response.statusText);
-          throw new Error(`CoinGecko API returned ${response.status}`);
+          console.error(`CoinGecko API error for ${mappedSymbol}:`, {
+            status: response.status,
+            statusText: response.statusText,
+          });
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`CoinGecko API returned ${response.status}: ${errorText}`);
         }
 
         const data = await response.json();
@@ -69,7 +81,6 @@ serve(async (req) => {
         };
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
-        // Instead of throwing, return null and filter out failed requests
         return null;
       }
     });
