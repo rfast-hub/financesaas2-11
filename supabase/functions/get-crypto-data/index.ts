@@ -10,8 +10,8 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
   'ethereum': 'ethereum',
   'binancecoin': 'binancecoin',
   'solana': 'solana',
-  'ripple': 'xrp',
-  'xrp': 'xrp',
+  'ripple': 'ripple', // Changed from 'xrp' to 'ripple' as that's CoinGecko's ID
+  'xrp': 'ripple',    // Add this mapping to handle both cases
   'cardano': 'cardano',
   'dogecoin': 'dogecoin',
   'polkadot': 'polkadot',
@@ -68,12 +68,17 @@ serve(async (req) => {
         };
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
-        throw error;
+        // Instead of throwing, return null and filter out failed requests
+        return null;
       }
     });
 
-    const results = await Promise.all(cryptoDataPromises);
-    console.log('Successfully fetched all crypto data:', results);
+    const results = (await Promise.all(cryptoDataPromises)).filter(result => result !== null);
+    console.log('Successfully fetched crypto data:', results);
+
+    if (results.length === 0) {
+      throw new Error('Failed to fetch data for all cryptocurrencies');
+    }
 
     return new Response(
       JSON.stringify(results),
