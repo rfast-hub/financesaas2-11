@@ -1,23 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { SUPPORTED_CRYPTOCURRENCIES } from "../price-alerts/utils/constants";
-
-interface TradingSignal {
-  signal: 'buy' | 'sell' | 'hold';
-  confidence: number;
-  timeframe: 'short_term' | 'medium_term' | 'long_term';
-  reasoning: string;
-  keyLevels: {
-    support: number;
-    resistance: number;
-  };
-  riskLevel: 'low' | 'medium' | 'high';
-}
+import { TradingSignalHeader } from "./TradingSignalHeader";
+import { TradingSignalContent } from "./TradingSignalContent";
+import { TradingSignal } from "./types";
 
 const TradingSignals = () => {
   const [selectedCrypto, setSelectedCrypto] = useState("bitcoin");
@@ -47,8 +36,8 @@ const TradingSignals = () => {
     return (
       <Card className="p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Brain className="w-5 h-5" />
-          <h2 className="text-xl font-semibold">AI Trading Signals</h2>
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-6 w-48" />
         </div>
         <div className="space-y-4">
           <Skeleton className="h-4 w-3/4" />
@@ -70,89 +59,13 @@ const TradingSignals = () => {
     );
   }
 
-  const getSignalIcon = () => {
-    switch (signal?.signal) {
-      case 'buy':
-        return <TrendingUp className="w-5 h-5 text-success" />;
-      case 'sell':
-        return <TrendingDown className="w-5 h-5 text-destructive" />;
-      default:
-        return <Minus className="w-5 h-5 text-muted-foreground" />;
-    }
-  };
-
-  const getRiskColor = () => {
-    switch (signal?.riskLevel) {
-      case 'low':
-        return 'text-success';
-      case 'medium':
-        return 'text-warning';
-      case 'high':
-        return 'text-destructive';
-      default:
-        return 'text-muted-foreground';
-    }
-  };
-
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <Brain className="w-5 h-5" />
-          <h2 className="text-xl font-semibold">AI Trading Signals</h2>
-        </div>
-        <Select
-          value={selectedCrypto}
-          onValueChange={setSelectedCrypto}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select cryptocurrency" />
-          </SelectTrigger>
-          <SelectContent>
-            {SUPPORTED_CRYPTOCURRENCIES.map((crypto) => (
-              <SelectItem key={crypto.id} value={crypto.id}>
-                {crypto.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {getSignalIcon()}
-            <span className="font-semibold capitalize">{signal?.signal} Signal</span>
-          </div>
-          <span className="text-sm">
-            {(signal?.confidence * 100).toFixed(1)}% confidence
-          </span>
-        </div>
-
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Timeframe</span>
-            <span className="capitalize">{signal?.timeframe.replace('_', ' ')}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Risk Level</span>
-            <span className={`capitalize ${getRiskColor()}`}>{signal?.riskLevel}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Support</span>
-            <span>${signal?.keyLevels.support.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Resistance</span>
-            <span>${signal?.keyLevels.resistance.toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="font-semibold mb-2">Analysis</h3>
-          <p className="text-sm text-muted-foreground">{signal?.reasoning}</p>
-        </div>
-      </div>
+      <TradingSignalHeader 
+        selectedCrypto={selectedCrypto}
+        onCryptoChange={setSelectedCrypto}
+      />
+      {signal && <TradingSignalContent signal={signal} />}
     </Card>
   );
 };
