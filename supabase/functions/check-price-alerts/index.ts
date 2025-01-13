@@ -12,18 +12,30 @@ import { PriceAlert } from '../_shared/types.ts';
 
 async function processAlert(alert: PriceAlert): Promise<boolean> {
   try {
-    console.log(`Processing alert for ${alert.cryptocurrency}:`, alert);
+    console.log(`Processing alert for ${alert.cryptocurrency}:`, {
+      id: alert.id,
+      cryptocurrency: alert.cryptocurrency,
+      target_price: alert.target_price,
+      condition: alert.condition,
+      creation_price: alert.creation_price,
+      alert_type: alert.alert_type
+    });
     
     const cryptoData = await getCryptoData(alert.cryptocurrency);
     console.log(`Current crypto data for ${alert.cryptocurrency}:`, {
       current_price: cryptoData.current_price,
       target_price: alert.target_price,
       condition: alert.condition,
-      alert_type: alert.alert_type
+      alert_type: alert.alert_type,
+      creation_price: alert.creation_price
     });
     
     if (isAlertTriggered(alert, cryptoData)) {
-      console.log(`Alert ${alert.id} triggered! Current price: ${cryptoData.current_price}, Target: ${alert.target_price}`);
+      console.log(`Alert ${alert.id} triggered!`, {
+        current_price: cryptoData.current_price,
+        target_price: alert.target_price,
+        condition: alert.condition
+      });
       
       if (alert.email_notification) {
         const userEmail = await getUserEmail(alert.user_id);
