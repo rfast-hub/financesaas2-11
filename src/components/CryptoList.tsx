@@ -17,11 +17,6 @@ const fetchCryptoData = async () => {
   }
 };
 
-// Helper function to get CoinGecko icon URL
-const getCryptoIconUrl = (symbol: string) => {
-  return `https://assets.coingecko.com/coins/images/1/thumb/generic-crypto.png`;
-};
-
 const CryptoList = () => {
   const { data: cryptos, isLoading, error } = useQuery({
     queryKey: ['cryptos'],
@@ -68,16 +63,9 @@ const CryptoList = () => {
             {cryptos?.map((crypto) => (
               <tr key={crypto.symbol} className="border-t border-secondary">
                 <td className="py-4">
-                  <div className="flex items-center gap-2">
-                    <img 
-                      src={getCryptoIconUrl(crypto.symbol)} 
-                      alt={crypto.name} 
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <div>
-                      <p className="font-medium">{crypto.name}</p>
-                      <p className="text-sm text-muted-foreground">{crypto.symbol.toUpperCase()}</p>
-                    </div>
+                  <div>
+                    <p className="font-medium">{crypto.name}</p>
+                    <p className="text-sm text-muted-foreground">{crypto.symbol.toUpperCase()}</p>
                   </div>
                 </td>
                 <td className="py-4">${crypto.current_price.toLocaleString()}</td>
