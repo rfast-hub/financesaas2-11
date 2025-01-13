@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { getCryptoData } from "../_shared/crypto-service.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -20,6 +19,8 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
 };
 
 serve(async (req) => {
+  console.log('Received request to get crypto data');
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
@@ -28,8 +29,6 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Received request to get crypto data');
-    
     const { limit } = await req.json();
     const cryptoSymbols = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'ripple'].slice(0, limit || 5);
     
@@ -41,13 +40,31 @@ serve(async (req) => {
         const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
         console.log(`Mapped ${symbol} to ${mappedSymbol} for API request`);
         
-        const data = await getCryptoData(mappedSymbol);
+        // Construct CoinGecko API URL with all required parameters
+        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${mappedSymbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
+        console.log(`Fetching from CoinGecko: ${url}`);
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          console.error(`CoinGecko API error for ${mappedSymbol}:`, response.status, response.statusText);
+          throw new Error(`CoinGecko API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log(`Raw CoinGecko response for ${mappedSymbol}:`, data);
+
+        if (!data[mappedSymbol]) {
+          console.error(`No data found for ${mappedSymbol} in CoinGecko response`);
+          throw new Error(`No data found for ${mappedSymbol}`);
+        }
+
         return {
           name: getCryptoName(symbol),
           symbol: symbol,
-          current_price: data.current_price,
-          price_change_percentage_24h: data.price_change_percentage_24h,
-          total_volume: data.total_volume,
+          current_price: data[mappedSymbol].usd,
+          price_change_percentage_24h: data[mappedSymbol].usd_24h_change || 0,
+          total_volume: data[mappedSymbol].usd_24h_vol || 0,
         };
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
@@ -69,6 +86,7 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in get-crypto-data function:', error);
+    
     return new Response(
       JSON.stringify({ 
         error: 'Failed to fetch cryptocurrency data',
