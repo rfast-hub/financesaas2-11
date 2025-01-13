@@ -81,8 +81,15 @@ const Index = () => {
           </div>
         </div>
 
-        <footer className="text-center py-4 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} CryptoTrack. All rights reserved.
+        <footer className="text-center py-8 text-sm text-muted-foreground border-t border-muted/20">
+          <div className="space-x-2">
+            <a href="/terms" className="hover:text-primary transition-colors">Terms & Conditions</a>
+            <span>•</span>
+            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
+          </div>
+          <div className="mt-2">
+            © {new Date().getFullYear()} CryptoTrack. All rights reserved.
+          </div>
         </footer>
       </div>
     </div>
