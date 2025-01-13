@@ -1,5 +1,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 import { PriceAlert, CryptoData } from './types.ts';
+import { isPriceAlertTriggered } from './price-comparison.ts';
+import { isPercentageAlertTriggered } from './percentage-comparison.ts';
+import { isVolumeAlertTriggered } from './volume-comparison.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -17,55 +20,17 @@ export function isAlertTriggered(alert: PriceAlert, cryptoData: CryptoData): boo
     current_volume: cryptoData.total_volume,
   });
 
-  // Convert prices to numbers and round to 2 decimal places for consistent comparison
-  const currentPrice = Number(cryptoData.current_price);
-  const targetPrice = alert.target_price ? Number(alert.target_price) : null;
-
-  let isTriggered = false;
-  
   switch (alert.alert_type) {
     case 'price':
-      if (!targetPrice) {
-        console.log('No target price set for price alert');
-        return false;
-      }
-      isTriggered = alert.condition === 'above' 
-        ? currentPrice >= targetPrice
-        : currentPrice <= targetPrice;
-      console.log(`Price comparison: ${currentPrice} ${alert.condition} ${targetPrice} = ${isTriggered}`);
-      break;
-    
+      return isPriceAlertTriggered(alert, cryptoData);
     case 'percentage':
-      if (!alert.percentage_change) {
-        console.log('No percentage change set for percentage alert');
-        return false;
-      }
-      const currentPercentage = Number(cryptoData.price_change_percentage_24h.toFixed(2));
-      const targetPercentage = Number(alert.percentage_change.toFixed(2));
-      isTriggered = alert.condition === 'above'
-        ? currentPercentage >= targetPercentage
-        : currentPercentage <= targetPercentage;
-      console.log(`Percentage comparison: ${currentPercentage}% ${alert.condition} ${targetPercentage}% = ${isTriggered}`);
-      break;
-    
+      return isPercentageAlertTriggered(alert, cryptoData);
     case 'volume':
-      if (!alert.volume_threshold) {
-        console.log('No volume threshold set for volume alert');
-        return false;
-      }
-      const currentVolume = Math.floor(cryptoData.total_volume);
-      const targetVolume = Math.floor(alert.volume_threshold);
-      isTriggered = currentVolume >= targetVolume;
-      console.log(`Volume comparison: ${currentVolume} >= ${targetVolume} = ${isTriggered}`);
-      break;
-    
+      return isVolumeAlertTriggered(alert, cryptoData);
     default:
       console.log(`Unknown alert type: ${alert.alert_type}`);
       return false;
   }
-
-  console.log(`Alert triggered: ${isTriggered}`);
-  return isTriggered;
 }
 
 export async function fetchActiveAlerts(): Promise<PriceAlert[]> {

@@ -1,12 +1,10 @@
 import { CryptoData } from './types.ts';
 
-async function fetchFromCoinGecko(cryptocurrency: string): Promise<CryptoData | null> {
+async function fetchCoinGeckoData(cryptocurrency: string): Promise<CryptoData | null> {
   try {
-    console.log(`Fetching data for ${cryptocurrency} from CoinGecko...`);
-    
     const coinId = cryptocurrency.toLowerCase();
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`
+      `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`
     );
 
     if (!response.ok) {
@@ -15,10 +13,9 @@ async function fetchFromCoinGecko(cryptocurrency: string): Promise<CryptoData | 
     }
 
     const data = await response.json();
-    console.log(`Raw CoinGecko response for ${cryptocurrency}:`, data);
-    
+
     if (!data[coinId]) {
-      console.error(`No data found for ${cryptocurrency} (ID: ${coinId})`);
+      console.error(`No data found for ${cryptocurrency} in CoinGecko response`);
       return null;
     }
 
@@ -36,13 +33,11 @@ async function fetchFromCoinGecko(cryptocurrency: string): Promise<CryptoData | 
   }
 }
 
-async function fetchFromLiveCoinWatch(cryptocurrency: string): Promise<CryptoData | null> {
+async function fetchLiveCoinWatchData(cryptocurrency: string): Promise<CryptoData | null> {
   try {
-    console.log(`Fetching data for ${cryptocurrency} from Live Coin Watch...`);
-    
     const apiKey = Deno.env.get('LIVECOINWATCH_API_KEY');
     if (!apiKey) {
-      console.error('Live Coin Watch API key not found');
+      console.error('LIVECOINWATCH_API_KEY not found in environment variables');
       return null;
     }
 
@@ -65,12 +60,6 @@ async function fetchFromLiveCoinWatch(cryptocurrency: string): Promise<CryptoDat
     }
 
     const data = await response.json();
-    console.log(`Raw Live Coin Watch response for ${cryptocurrency}:`, data);
-
-    if (!data.rate) {
-      console.error(`No price data found for ${cryptocurrency}`);
-      return null;
-    }
 
     const cryptoData: CryptoData = {
       current_price: Number(data.rate),
@@ -87,22 +76,22 @@ async function fetchFromLiveCoinWatch(cryptocurrency: string): Promise<CryptoDat
 }
 
 export async function getCryptoData(cryptocurrency: string): Promise<CryptoData> {
-  console.log(`Attempting to fetch data for ${cryptocurrency} from multiple sources...`);
+  console.log(`Fetching crypto data for ${cryptocurrency}...`);
 
-  // Try Live Coin Watch first
-  const liveCoinWatchData = await fetchFromLiveCoinWatch(cryptocurrency);
-  if (liveCoinWatchData) {
-    console.log(`Successfully fetched data from Live Coin Watch for ${cryptocurrency}`);
-    return liveCoinWatchData;
-  }
-
-  // Fallback to CoinGecko
-  const coinGeckoData = await fetchFromCoinGecko(cryptocurrency);
+  // Try CoinGecko first
+  const coinGeckoData = await fetchCoinGeckoData(cryptocurrency);
   if (coinGeckoData) {
-    console.log(`Successfully fetched data from CoinGecko for ${cryptocurrency}`);
+    console.log('Successfully fetched data from CoinGecko');
     return coinGeckoData;
   }
 
-  // If both APIs fail, throw an error
+  // Fallback to Live Coin Watch
+  console.log('Falling back to Live Coin Watch...');
+  const liveCoinWatchData = await fetchLiveCoinWatchData(cryptocurrency);
+  if (liveCoinWatchData) {
+    console.log('Successfully fetched data from Live Coin Watch');
+    return liveCoinWatchData;
+  }
+
   throw new Error(`Failed to fetch crypto data for ${cryptocurrency} from all available sources`);
 }
