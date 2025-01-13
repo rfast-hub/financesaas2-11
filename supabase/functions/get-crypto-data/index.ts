@@ -22,7 +22,9 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: corsHeaders 
+    });
   }
 
   try {
@@ -58,7 +60,12 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(results),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        } 
+      }
     );
   } catch (error) {
     console.error('Error in get-crypto-data function:', error);
@@ -69,7 +76,10 @@ serve(async (req) => {
       }),
       { 
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        }
       }
     );
   }
