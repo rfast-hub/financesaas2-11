@@ -66,9 +66,11 @@ export const AlertForm = () => {
     }
 
     setIsSubmitting(true);
+    console.log('Starting alert creation process...');
     
     try {
       const validation = validateAlertInput(alertType, { targetPrice, percentage, volume });
+      console.log('Validation result:', validation);
       
       if (!validation.isValid) {
         toast({
@@ -80,6 +82,8 @@ export const AlertForm = () => {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('Current user:', user?.id);
+      
       if (!user) {
         toast({
           description: "Please sign in to create alerts",
@@ -91,6 +95,8 @@ export const AlertForm = () => {
 
       // Get current price before creating the alert
       const currentPrice = await getCurrentPrice(cryptocurrency);
+      console.log('Current price for alert:', currentPrice);
+      
       if (!currentPrice) {
         toast({
           description: "Failed to fetch current price. Please try again.",
@@ -127,6 +133,7 @@ export const AlertForm = () => {
 
       if (error) throw error;
 
+      console.log('Alert created successfully');
       toast({
         description: "Price alert created successfully",
       });
