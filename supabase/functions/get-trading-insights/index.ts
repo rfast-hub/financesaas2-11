@@ -35,11 +35,19 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a cryptocurrency trading expert. Analyze the current market conditions for Bitcoin (current price: $${currentPrice}) and provide trading insights. Focus on current market conditions, technical analysis, and fundamental factors. Be specific and accurate.`
+            content: `You are a cryptocurrency trading expert. Analyze the current market conditions for Bitcoin (current price: $${currentPrice}). 
+            IMPORTANT: You must return ONLY a JSON object with this exact structure, no additional text or explanation:
+            {
+              "recommendation": "Buy" | "Sell" | "Hold",
+              "confidence": <number between 0-100>,
+              "reasoning": "<brief explanation>",
+              "risks": ["<risk1>", "<risk2>", ...],
+              "opportunities": ["<opportunity1>", "<opportunity2>", ...]
+            }`
           },
           {
             role: 'user',
-            content: 'Provide detailed trading insights for Bitcoin, including specific price levels, current market sentiment, and key risks and opportunities. Focus on actionable insights.'
+            content: 'Generate current trading insights for Bitcoin in the specified JSON format.'
           }
         ],
         temperature: 0.7,
