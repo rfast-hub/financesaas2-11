@@ -6,11 +6,13 @@ import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
 import { AITradingInsights } from "@/components/ai/AITradingInsights";
 import TradingSignals from "@/components/trading/TradingSignals";
-import { ChartLine, Brain, LogOut } from "lucide-react";
+import { ChartLine, Brain, LogOut, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { SubscriptionManager } from "@/components/subscription/SubscriptionManager";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -44,14 +46,30 @@ const Index = () => {
               Track, analyze, and manage your cryptocurrency portfolio with real-time insights
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2"
-            onClick={handleLogout}
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-4">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Manage Subscription
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Subscription Management</DialogTitle>
+                </DialogHeader>
+                <SubscriptionManager />
+              </DialogContent>
+            </Dialog>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </Button>
+          </div>
         </header>
         
         <MarketStats />
