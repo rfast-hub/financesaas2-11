@@ -42,6 +42,58 @@ async function fetchCoinGeckoData(cryptocurrency: string): Promise<CryptoData | 
   }
 }
 
+async function fetchCoinMarketCapData(cryptocurrency: string): Promise<CryptoData | null> {
+  try {
+    const apiKey = Deno.env.get('COINMARKETCAP_API_KEY');
+    if (!apiKey) {
+      console.error('COINMARKETCAP_API_KEY not found in environment variables');
+      return null;
+    }
+
+    console.log(`Fetching CoinMarketCap data for ${cryptocurrency}`);
+    
+    const response = await fetch(
+      'https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest',
+      {
+        method: 'GET',
+        headers: {
+          'X-CMC_PRO_API_KEY': apiKey,
+          'Accept': 'application/json',
+        },
+        params: {
+          symbol: cryptocurrency.toUpperCase(),
+          convert: 'USD'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error(`CoinMarketCap API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const cryptoData = data.data[cryptocurrency.toUpperCase()][0];
+
+    if (!cryptoData) {
+      console.error(`No data found for ${cryptocurrency} in CoinMarketCap response`);
+      return null;
+    }
+
+    const result: CryptoData = {
+      current_price: Number(cryptoData.quote.USD.price),
+      price_change_percentage_24h: Number(cryptoData.quote.USD.percent_change_24h),
+      total_volume: Number(cryptoData.quote.USD.volume_24h),
+    };
+
+    console.log(`Processed CoinMarketCap data for ${cryptocurrency}:`, result);
+    return result;
+  } catch (error) {
+    console.error(`Error fetching data from CoinMarketCap for ${cryptocurrency}:`, error);
+    return null;
+  }
+}
+
 async function fetchLiveCoinWatchData(cryptocurrency: string): Promise<CryptoData | null> {
   try {
     const apiKey = Deno.env.get('LIVECOINWATCH_API_KEY');
@@ -94,6 +146,14 @@ export async function getCryptoData(cryptocurrency: string): Promise<CryptoData>
   if (coinGeckoData) {
     console.log('Successfully fetched data from CoinGecko');
     return coinGeckoData;
+  }
+
+  // Try CoinMarketCap second
+  console.log('Falling back to CoinMarketCap...');
+  const coinMarketCapData = await fetchCoinMarketCapData(cryptocurrency);
+  if (coinMarketCapData) {
+    console.log('Successfully fetched data from CoinMarketCap');
+    return coinMarketCapData;
   }
 
   // Fallback to Live Coin Watch
