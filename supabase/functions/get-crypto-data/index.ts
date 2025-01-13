@@ -6,6 +6,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
+  'bitcoin': 'bitcoin',
+  'ethereum': 'ethereum',
+  'binancecoin': 'binancecoin',
+  'solana': 'solana',
+  'ripple': 'xrp',
+  'xrp': 'xrp',
+  'cardano': 'cardano',
+  'dogecoin': 'dogecoin',
+  'polkadot': 'polkadot',
+  'matic-network': 'matic-network',
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -22,7 +35,11 @@ serve(async (req) => {
     
     const cryptoDataPromises = cryptoSymbols.map(async (symbol) => {
       try {
-        const data = await getCryptoData(symbol);
+        // Map the symbol to its CoinGecko equivalent
+        const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
+        console.log(`Mapped ${symbol} to ${mappedSymbol} for API request`);
+        
+        const data = await getCryptoData(mappedSymbol);
         return {
           name: getCryptoName(symbol),
           symbol: symbol,
@@ -65,6 +82,10 @@ function getCryptoName(symbol: string): string {
     'binancecoin': 'Binance Coin',
     'solana': 'Solana',
     'ripple': 'XRP',
+    'cardano': 'Cardano',
+    'dogecoin': 'Dogecoin',
+    'polkadot': 'Polkadot',
+    'matic-network': 'Polygon',
   };
-  return names[symbol] || symbol;
+  return names[symbol.toLowerCase()] || symbol;
 }

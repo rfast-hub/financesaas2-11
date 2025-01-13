@@ -3,6 +3,8 @@ import { CryptoData } from './types.ts';
 async function fetchCoinGeckoData(cryptocurrency: string): Promise<CryptoData | null> {
   try {
     const coinId = cryptocurrency.toLowerCase();
+    console.log(`Fetching CoinGecko data for ${coinId}`);
+    
     const response = await fetch(
       `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`
     );
@@ -40,6 +42,8 @@ async function fetchLiveCoinWatchData(cryptocurrency: string): Promise<CryptoDat
       console.error('LIVECOINWATCH_API_KEY not found in environment variables');
       return null;
     }
+
+    console.log(`Fetching Live Coin Watch data for ${cryptocurrency}`);
 
     const response = await fetch('https://api.livecoinwatch.com/coins/single', {
       method: 'POST',
