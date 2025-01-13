@@ -18,8 +18,8 @@ export function isAlertTriggered(alert: PriceAlert, cryptoData: CryptoData): boo
   });
 
   // Convert prices to numbers and round to 2 decimal places for consistent comparison
-  const currentPrice = Number(cryptoData.current_price.toFixed(2));
-  const targetPrice = alert.target_price ? Number(alert.target_price.toFixed(2)) : null;
+  const currentPrice = Number(cryptoData.current_price);
+  const targetPrice = alert.target_price ? Number(alert.target_price) : null;
 
   let isTriggered = false;
   

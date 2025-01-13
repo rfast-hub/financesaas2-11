@@ -22,11 +22,14 @@ async function fetchFromCoinGecko(cryptocurrency: string): Promise<CryptoData | 
       return null;
     }
 
-    return {
-      current_price: data[coinId].usd,
-      price_change_percentage_24h: data[coinId].usd_24h_change || 0,
-      total_volume: data[coinId].usd_24h_vol || 0,
+    const cryptoData: CryptoData = {
+      current_price: Number(data[coinId].usd),
+      price_change_percentage_24h: Number(data[coinId].usd_24h_change || 0),
+      total_volume: Number(data[coinId].usd_24h_vol || 0),
     };
+
+    console.log(`Processed data for ${cryptocurrency}:`, cryptoData);
+    return cryptoData;
   } catch (error) {
     console.error(`Error fetching data from CoinGecko for ${cryptocurrency}:`, error);
     return null;
@@ -69,11 +72,14 @@ async function fetchFromLiveCoinWatch(cryptocurrency: string): Promise<CryptoDat
       return null;
     }
 
-    return {
-      current_price: data.rate,
-      price_change_percentage_24h: data.delta.day * 100, // Convert to percentage
-      total_volume: data.volume,
+    const cryptoData: CryptoData = {
+      current_price: Number(data.rate),
+      price_change_percentage_24h: Number(data.delta.day * 100), // Convert to percentage
+      total_volume: Number(data.volume),
     };
+
+    console.log(`Processed data for ${cryptocurrency}:`, cryptoData);
+    return cryptoData;
   } catch (error) {
     console.error(`Error fetching data from Live Coin Watch for ${cryptocurrency}:`, error);
     return null;
