@@ -29,21 +29,42 @@ export const AlertForm = () => {
   const getCurrentPrice = async (crypto: string): Promise<number | null> => {
     try {
       console.log(`Fetching current price for ${crypto}...`);
-      const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`,
+      // First try the Pro API endpoint
+      const proApiResponse = await fetch(
+        `https://pro-api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`,
         {
           headers: {
             'Accept': 'application/json',
+            'X-Cg-Pro-Api-Key': process.env.COINGECKO_API_KEY || '',
           }
         }
       );
       
-      if (!response.ok) {
-        console.error(`CoinGecko API error: ${response.status}`);
-        throw new Error(`Failed to fetch price: ${response.status}`);
+      // If Pro API fails, fallback to free API
+      if (!proApiResponse.ok) {
+        console.log('Pro API failed, falling back to free API');
+        const freeApiResponse = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`,
+          {
+            headers: {
+              'Accept': 'application/json',
+            }
+          }
+        );
+        
+        if (!freeApiResponse.ok) {
+          console.error(`Both API endpoints failed for ${crypto}`);
+          throw new Error('Failed to fetch price from both API endpoints');
+        }
+        
+        const data = await freeApiResponse.json();
+        if (!data[crypto]?.usd) {
+          throw new Error('No price data available');
+        }
+        return data[crypto].usd;
       }
       
-      const data = await response.json();
+      const data = await proApiResponse.json();
       console.log('Price data:', data);
       
       if (!data[crypto]?.usd) {
@@ -69,6 +90,7 @@ export const AlertForm = () => {
     console.log('Starting alert creation process...');
     
     try {
+      // Validate input
       const validation = validateAlertInput(alertType, { targetPrice, percentage, volume });
       console.log('Validation result:', validation);
       
@@ -77,10 +99,10 @@ export const AlertForm = () => {
           description: validation.errorMessage,
           variant: "destructive",
         });
-        setIsSubmitting(false);
         return;
       }
 
+      // Check authentication
       const { data: { user } } = await supabase.auth.getUser();
       console.log('Current user:', user?.id);
       
@@ -89,11 +111,10 @@ export const AlertForm = () => {
           description: "Please sign in to create alerts",
           variant: "destructive",
         });
-        setIsSubmitting(false);
         return;
       }
 
-      // Get current price before creating the alert
+      // Get current price
       const currentPrice = await getCurrentPrice(cryptocurrency);
       console.log('Current price for alert:', currentPrice);
       
@@ -102,10 +123,10 @@ export const AlertForm = () => {
           description: "Failed to fetch current price. Please try again.",
           variant: "destructive",
         });
-        setIsSubmitting(false);
         return;
       }
 
+      // Create alert
       console.log('Creating alert with data:', {
         cryptocurrency,
         alertType,
