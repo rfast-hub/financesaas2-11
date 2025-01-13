@@ -19,53 +19,66 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
 };
 
 async function fetchWithProAPI(symbol: string, apiKey: string) {
-  const url = `https://pro-api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
-  console.log('Attempting Pro API request:', url);
-  
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json',
-      'X-Cg-Pro-Api-Key': apiKey,
-    }
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Pro API Error:', {
-      status: response.status,
-      statusText: response.statusText,
-      body: errorText
+  try {
+    const url = `https://pro-api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
+    console.log('Attempting Pro API request:', url);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+        'X-Cg-Pro-Api-Key': apiKey,
+      }
     });
-    throw new Error(`Pro API failed: ${errorText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Pro API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Pro API failed: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in fetchWithProAPI:', error);
+    throw error;
   }
-  
-  return response.json();
 }
 
 async function fetchWithFreeAPI(symbol: string) {
-  const url = `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
-  console.log('Falling back to free API:', url);
-  
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/json',
-    }
-  });
-  
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Free API Error:', {
-      status: response.status,
-      statusText: response.statusText,
-      body: errorText
+  try {
+    const url = `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
+    console.log('Falling back to free API:', url);
+    
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/json',
+      }
     });
-    throw new Error(`Free API failed: ${errorText}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Free API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText
+      });
+      throw new Error(`Free API failed: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in fetchWithFreeAPI:', error);
+    throw error;
   }
-  
-  return response.json();
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       headers: corsHeaders 
@@ -76,12 +89,21 @@ serve(async (req) => {
     const apiKey = Deno.env.get('COINGECKO_API_KEY');
     console.log('API Key present:', !!apiKey);
 
-    const { limit } = await req.json();
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      console.log('No request body or invalid JSON, using default limit');
+      requestBody = { limit: 5 };
+    }
+
+    const { limit } = requestBody;
     const cryptoSymbols = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'ripple'].slice(0, limit || 5);
     
     console.log(`Fetching data for ${cryptoSymbols.length} cryptocurrencies:`, cryptoSymbols);
     
-    const cryptoDataPromises = cryptoSymbols.map(async (symbol) => {
+    const results = [];
+    for (const symbol of cryptoSymbols) {
       try {
         const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
         
@@ -101,24 +123,21 @@ serve(async (req) => {
 
         if (!data[mappedSymbol]) {
           console.error(`No data found for ${mappedSymbol} in response`);
-          throw new Error(`No data found for ${mappedSymbol}`);
+          continue; // Skip this cryptocurrency but continue with others
         }
 
-        return {
+        results.push({
           name: getCryptoName(symbol),
           symbol: symbol,
           current_price: data[mappedSymbol].usd,
           price_change_percentage_24h: data[mappedSymbol].usd_24h_change || 0,
           total_volume: data[mappedSymbol].usd_24h_vol || 0,
-        };
+        });
       } catch (error) {
         console.error(`Error fetching data for ${symbol}:`, error);
-        return null;
+        // Continue with other cryptocurrencies even if one fails
       }
-    });
-
-    const results = (await Promise.all(cryptoDataPromises)).filter(result => result !== null);
-    console.log('Successfully fetched crypto data:', results);
+    }
 
     if (results.length === 0) {
       throw new Error('Failed to fetch data for all cryptocurrencies');
