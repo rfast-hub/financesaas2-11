@@ -1,15 +1,14 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import "https://deno.land/x/xhr@0.1.0/mod.ts"
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -20,6 +19,11 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured');
     }
 
+    // Fetch current Bitcoin price from CoinGecko
+    const priceResponse = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+    const priceData = await priceResponse.json();
+    const currentPrice = priceData.bitcoin?.usd || 'unknown';
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -27,15 +31,15 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'You are a cryptocurrency trading expert. Analyze the current market conditions and provide trading insights. Return ONLY a JSON object with the following structure, no markdown or additional text: { "recommendation": string, "confidence": number between 0-100, "reasoning": string, "risks": string[], "opportunities": string[] }.'
+            content: `You are a cryptocurrency trading expert. Analyze the current market conditions for Bitcoin (current price: $${currentPrice}) and provide trading insights. Focus on current market conditions, technical analysis, and fundamental factors. Be specific and accurate.`
           },
           {
             role: 'user',
-            content: 'Provide trading insights for Bitcoin and the overall crypto market.'
+            content: 'Provide detailed trading insights for Bitcoin, including specific price levels, current market sentiment, and key risks and opportunities. Focus on actionable insights.'
           }
         ],
         temperature: 0.7,
@@ -54,7 +58,6 @@ serve(async (req) => {
       throw new Error('Invalid response format from OpenAI');
     }
 
-    // Clean the response content to ensure it's valid JSON
     const cleanContent = data.choices[0].message.content.trim();
     console.log('Cleaned content:', cleanContent);
 
@@ -62,7 +65,6 @@ serve(async (req) => {
       const insights = JSON.parse(cleanContent);
       console.log('Parsed insights:', insights);
 
-      // Validate the response structure
       if (!insights.recommendation || !Array.isArray(insights.risks) || !Array.isArray(insights.opportunities)) {
         throw new Error('Invalid insights format');
       }
