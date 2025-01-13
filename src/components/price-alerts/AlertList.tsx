@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { AlertCard } from "./AlertCard";
 import { useAlerts } from "./hooks/useAlerts";
