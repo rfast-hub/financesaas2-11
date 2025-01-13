@@ -47,16 +47,16 @@ export function SubscriptionManager() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No active session");
 
-      const response = await fetch("/api/create-portal-session", {
-        method: "POST",
+      const { data, error } = await supabase.functions.invoke('create-portal-session', {
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
       });
 
-      const { url } = await response.json();
-      window.location.href = url;
+      if (error) throw error;
+      if (data?.url) {
+        window.location.href = data.url;
+      }
     } catch (error) {
       toast({
         title: "Error",

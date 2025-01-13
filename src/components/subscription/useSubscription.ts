@@ -28,15 +28,13 @@ export function useSubscription() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("No active session");
 
-    const response = await fetch("/api/cancel-subscription", {
-      method: "POST",
+    const { error } = await supabase.functions.invoke('cancel-subscription', {
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${session.access_token}`,
       },
     });
 
-    if (!response.ok) {
+    if (error) {
       throw new Error("Failed to cancel subscription");
     }
 
