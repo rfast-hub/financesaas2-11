@@ -3,10 +3,17 @@ import { CryptoData } from './types.ts';
 async function fetchCoinGeckoData(cryptocurrency: string): Promise<CryptoData | null> {
   try {
     const coinId = cryptocurrency.toLowerCase();
-    console.log(`Fetching CoinGecko data for ${coinId}`);
+    const apiKey = Deno.env.get('COINGECKO_API_KEY');
+    console.log(`Fetching CoinGecko data for ${coinId} with API key`);
     
     const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`
+      `https://pro-api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X-Cg-Pro-Api-Key': apiKey || '',
+        }
+      }
     );
 
     if (!response.ok) {
