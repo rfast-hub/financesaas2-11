@@ -30,16 +30,28 @@ export const AlertForm = () => {
     try {
       console.log(`Fetching current price for ${crypto}...`);
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`
+        `https://api.coingecko.com/api/v3/simple/price?ids=${crypto}&vs_currencies=usd`,
+        {
+          headers: {
+            'Accept': 'application/json',
+          }
+        }
       );
       
       if (!response.ok) {
+        console.error(`CoinGecko API error: ${response.status}`);
         throw new Error(`Failed to fetch price: ${response.status}`);
       }
       
       const data = await response.json();
       console.log('Price data:', data);
-      return data[crypto]?.usd || null;
+      
+      if (!data[crypto]?.usd) {
+        console.error('No price data found for', crypto);
+        throw new Error('No price data available');
+      }
+      
+      return data[crypto].usd;
     } catch (error) {
       console.error("Error fetching current price:", error);
       return null;
@@ -63,6 +75,7 @@ export const AlertForm = () => {
           description: validation.errorMessage,
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -72,6 +85,7 @@ export const AlertForm = () => {
           description: "Please sign in to create alerts",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -82,6 +96,7 @@ export const AlertForm = () => {
           description: "Failed to fetch current price. Please try again.",
           variant: "destructive",
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -106,6 +121,7 @@ export const AlertForm = () => {
           volume_threshold: alertType === "volume" ? parseFloat(volume) : null,
           is_active: true,
           creation_price: currentPrice,
+          email_notification: true,
         },
       ]);
 

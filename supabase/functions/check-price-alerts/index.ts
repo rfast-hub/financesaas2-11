@@ -22,13 +22,12 @@ async function processAlert(alert: PriceAlert): Promise<boolean> {
     });
     
     const cryptoData = await getCryptoData(alert.cryptocurrency);
-    console.log(`Current crypto data for ${alert.cryptocurrency}:`, {
-      current_price: cryptoData.current_price,
-      target_price: alert.target_price,
-      condition: alert.condition,
-      alert_type: alert.alert_type,
-      creation_price: alert.creation_price
-    });
+    if (!cryptoData) {
+      console.error(`Failed to fetch crypto data for ${alert.cryptocurrency}`);
+      return false;
+    }
+
+    console.log(`Current crypto data for ${alert.cryptocurrency}:`, cryptoData);
     
     if (isAlertTriggered(alert, cryptoData)) {
       console.log(`Alert ${alert.id} triggered!`, {
@@ -87,11 +86,17 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const processedAlerts = [];
+    const errors = [];
     
     for (const alert of alerts) {
-      const success = await processAlert(alert);
-      if (success) {
-        processedAlerts.push(alert.id);
+      try {
+        const success = await processAlert(alert);
+        if (success) {
+          processedAlerts.push(alert.id);
+        }
+      } catch (error) {
+        console.error(`Failed to process alert ${alert.id}:`, error);
+        errors.push({ alertId: alert.id, error: error.message });
       }
     }
 
@@ -100,6 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: 'success',
         message: 'Alerts checked successfully',
         processed: processedAlerts,
+        errors: errors,
         total_alerts_checked: alerts.length
       }),
       {
