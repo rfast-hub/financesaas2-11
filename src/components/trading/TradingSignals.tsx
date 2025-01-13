@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Brain, TrendingUp, TrendingDown, Minus, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState } from "react";
+import { SUPPORTED_CRYPTOCURRENCIES } from "../price-alerts/utils/constants";
 
 interface TradingSignal {
   signal: 'buy' | 'sell' | 'hold';
@@ -17,8 +20,10 @@ interface TradingSignal {
 }
 
 const TradingSignals = () => {
+  const [selectedCrypto, setSelectedCrypto] = useState("bitcoin");
+
   const { data: signal, isLoading, error } = useQuery({
-    queryKey: ['tradingSignals', 'bitcoin'],
+    queryKey: ['tradingSignals', selectedCrypto],
     queryFn: async () => {
       // First get current market data
       const { data: marketData, error: marketError } = await supabase.functions.invoke('get-crypto-data');
@@ -27,7 +32,7 @@ const TradingSignals = () => {
       // Then get trading signals based on market data
       const { data: signalData, error: signalError } = await supabase.functions.invoke<TradingSignal>('get-trading-signals', {
         body: { 
-          cryptocurrency: 'bitcoin',
+          cryptocurrency: selectedCrypto,
           marketData 
         }
       });
@@ -91,9 +96,26 @@ const TradingSignals = () => {
 
   return (
     <Card className="p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <Brain className="w-5 h-5" />
-        <h2 className="text-xl font-semibold">AI Trading Signals</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Brain className="w-5 h-5" />
+          <h2 className="text-xl font-semibold">AI Trading Signals</h2>
+        </div>
+        <Select
+          value={selectedCrypto}
+          onValueChange={setSelectedCrypto}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select cryptocurrency" />
+          </SelectTrigger>
+          <SelectContent>
+            {SUPPORTED_CRYPTOCURRENCIES.map((crypto) => (
+              <SelectItem key={crypto.id} value={crypto.id}>
+                {crypto.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="space-y-6">
