@@ -10,8 +10,8 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
   'ethereum': 'ethereum',
   'binancecoin': 'binancecoin',
   'solana': 'solana',
-  'ripple': 'ripple', // Changed from 'xrp' to 'ripple' as that's CoinGecko's ID
-  'xrp': 'ripple',    // Add this mapping to handle both cases
+  'ripple': 'ripple',
+  'xrp': 'ripple',
   'cardano': 'cardano',
   'dogecoin': 'dogecoin',
   'polkadot': 'polkadot',
@@ -21,7 +21,6 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
 serve(async (req) => {
   console.log('Received request to get crypto data');
 
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
       headers: corsHeaders 
@@ -36,15 +35,17 @@ serve(async (req) => {
     
     const cryptoDataPromises = cryptoSymbols.map(async (symbol) => {
       try {
-        // Map the symbol to its CoinGecko equivalent
         const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
-        console.log(`Mapped ${symbol} to ${mappedSymbol} for API request`);
+        console.log(`Fetching data for ${mappedSymbol} from CoinGecko...`);
         
-        // Construct CoinGecko API URL with all required parameters
-        const url = `https://api.coingecko.com/api/v3/simple/price?ids=${mappedSymbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
-        console.log(`Fetching from CoinGecko: ${url}`);
-
-        const response = await fetch(url);
+        const response = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${mappedSymbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`,
+          {
+            headers: {
+              'Accept': 'application/json',
+            }
+          }
+        );
         
         if (!response.ok) {
           console.error(`CoinGecko API error for ${mappedSymbol}:`, response.status, response.statusText);
