@@ -17,9 +17,9 @@ serve(async (req) => {
       throw new Error('Perplexity API key not configured');
     }
 
-    const { message } = await req.json();
+    const { message, model = 'llama-3.1-sonar-large-128k-online' } = await req.json();
     
-    console.log('Processing chat message:', message);
+    console.log('Processing chat message:', message, 'with model:', model);
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -28,18 +28,18 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-sonar-large-128k-online',
+        model,
         messages: [
           {
             role: 'system',
-            content: 'You are a cryptocurrency expert assistant. Provide accurate, up-to-date information about cryptocurrency prices, market trends, and general crypto knowledge. Keep responses concise and informative.'
+            content: 'You are a cryptocurrency expert assistant. Provide accurate, factual, and up-to-date information about cryptocurrency prices, market trends, and general crypto knowledge. Always verify information before providing it, and if you are not certain about something, acknowledge the uncertainty. Focus on providing data-driven insights and technical analysis when applicable.'
           },
           {
             role: 'user',
             content: message
           }
         ],
-        temperature: 0.7,
+        temperature: 0.2,
         max_tokens: 2000,
       }),
     });

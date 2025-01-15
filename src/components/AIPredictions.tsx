@@ -5,6 +5,7 @@ import { Brain, Send } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Message {
   id: string;
@@ -12,10 +13,34 @@ interface Message {
   isUser: boolean;
 }
 
-const sendMessage = async (message: string) => {
+interface AIModel {
+  id: string;
+  name: string;
+  description: string;
+}
+
+const AI_MODELS: AIModel[] = [
+  {
+    id: "llama-3.1-sonar-small-128k-online",
+    name: "Fast",
+    description: "Quick responses, good for simple queries"
+  },
+  {
+    id: "llama-3.1-sonar-large-128k-online",
+    name: "Balanced",
+    description: "Good balance of speed and accuracy"
+  },
+  {
+    id: "llama-3.1-sonar-huge-128k-online",
+    name: "Accurate",
+    description: "Most accurate, best for complex analysis"
+  }
+];
+
+const sendMessage = async (message: string, model: string) => {
   try {
     const { data, error } = await supabase.functions.invoke<{ answer: string }>('get-bitcoin-prediction', {
-      body: { message }
+      body: { message, model }
     });
     
     if (error) {
@@ -38,6 +63,7 @@ const AIPredictions = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedModel, setSelectedModel] = useState(AI_MODELS[1].id);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim()) return;
@@ -53,7 +79,7 @@ const AIPredictions = () => {
     setIsTyping(true);
 
     try {
-      const response = await sendMessage(newMessage);
+      const response = await sendMessage(newMessage, selectedModel);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -76,6 +102,21 @@ const AIPredictions = () => {
           <Brain className="w-6 h-6" />
           <h2 className="text-xl font-semibold">Crypto Assistant</h2>
         </div>
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Select model" />
+          </SelectTrigger>
+          <SelectContent>
+            {AI_MODELS.map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                <div className="flex flex-col">
+                  <span>{model.name}</span>
+                  <span className="text-xs text-muted-foreground">{model.description}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex flex-col space-y-4 h-[400px] overflow-y-auto mb-4 p-4 rounded-lg bg-background/50">
