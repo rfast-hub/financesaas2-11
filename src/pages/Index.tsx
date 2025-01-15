@@ -4,7 +4,6 @@ import CryptoList from "@/components/CryptoList";
 import AIPredictions from "@/components/AIPredictions";
 import SentimentAnalysis from "@/components/SentimentAnalysis";
 import PriceAlerts from "@/components/PriceAlerts";
-import { AITradingInsights } from "@/components/ai/AITradingInsights";
 import TradingSignals from "@/components/trading/TradingSignals";
 import { ChartLine, Brain, LogOut, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,7 +74,6 @@ const Index = () => {
               AI Insights
             </div>
             <SentimentAnalysis />
-            <AITradingInsights />
             <TradingSignals />
             <AIPredictions />
           </div>
