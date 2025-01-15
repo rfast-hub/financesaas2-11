@@ -97,20 +97,24 @@ const AIPredictions = () => {
 
   return (
     <div className="glass-card p-6 rounded-lg mb-8 animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-2">
           <Brain className="w-6 h-6" />
           <h2 className="text-xl font-semibold">Crypto Assistant</h2>
         </div>
         <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[140px] h-9 px-3">
             <SelectValue placeholder="Select model" />
           </SelectTrigger>
           <SelectContent>
             {AI_MODELS.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
+              <SelectItem 
+                key={model.id} 
+                value={model.id}
+                className="flex flex-col py-2 cursor-pointer"
+              >
                 <div className="flex flex-col">
-                  <span>{model.name}</span>
+                  <span className="font-medium">{model.name}</span>
                   <span className="text-xs text-muted-foreground">{model.description}</span>
                 </div>
               </SelectItem>
