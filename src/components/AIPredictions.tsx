@@ -162,8 +162,15 @@ const AIPredictions = () => {
         <Button 
           onClick={handleSendMessage} 
           disabled={isTyping || !newMessage.trim()}
+          size="icon"
+          className="w-12 h-10 transition-all duration-200 hover:scale-105"
+          variant="default"
         >
-          <Send className="w-4 h-4" />
+          {isTyping ? (
+            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
         </Button>
       </div>
     </div>
