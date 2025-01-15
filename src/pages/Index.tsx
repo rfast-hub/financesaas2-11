@@ -102,7 +102,12 @@ const Index = () => {
               © {new Date().getFullYear()} Crypto Dashboard. All rights reserved.
             </div>
             <div className="flex gap-6">
-              <a href="#" className="hover:text-primary transition-colors">
+              <a 
+                href="http://landing.cryptotrack.org/terms" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-primary transition-colors"
+              >
                 Terms and Conditions
               </a>
               <a href="#" className="hover:text-primary transition-colors">
