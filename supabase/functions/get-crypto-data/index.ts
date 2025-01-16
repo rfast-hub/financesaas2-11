@@ -21,12 +21,12 @@ const CRYPTO_SYMBOL_MAP: { [key: string]: string } = {
 async function fetchWithProAPI(symbol: string, apiKey: string) {
   try {
     const url = `https://pro-api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
-    console.log('Attempting Pro API request:', url);
+    console.log(`Attempting Pro API request for ${symbol}`);
     
     const response = await fetch(url, {
       headers: {
         'Accept': 'application/json',
-        'X-Cg-Pro-Api-Key': apiKey,
+        'X-CG-Pro-API-Key': apiKey,
       }
     });
     
@@ -35,15 +35,17 @@ async function fetchWithProAPI(symbol: string, apiKey: string) {
       console.error('Pro API Error:', {
         status: response.status,
         statusText: response.statusText,
-        body: errorText
+        body: errorText,
+        symbol
       });
-      throw new Error(`Pro API failed: ${errorText}`);
+      throw new Error(`Pro API failed for ${symbol}: ${errorText}`);
     }
     
     const data = await response.json();
+    console.log(`Successfully fetched Pro API data for ${symbol}`);
     return data;
   } catch (error) {
-    console.error('Error in fetchWithProAPI:', error);
+    console.error(`Error in fetchWithProAPI for ${symbol}:`, error);
     throw error;
   }
 }
@@ -51,7 +53,7 @@ async function fetchWithProAPI(symbol: string, apiKey: string) {
 async function fetchWithFreeAPI(symbol: string) {
   try {
     const url = `https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true`;
-    console.log('Falling back to free API:', url);
+    console.log(`Attempting free API request for ${symbol}`);
     
     const response = await fetch(url, {
       headers: {
@@ -64,15 +66,17 @@ async function fetchWithFreeAPI(symbol: string) {
       console.error('Free API Error:', {
         status: response.status,
         statusText: response.statusText,
-        body: errorText
+        body: errorText,
+        symbol
       });
-      throw new Error(`Free API failed: ${errorText}`);
+      throw new Error(`Free API failed for ${symbol}: ${errorText}`);
     }
     
     const data = await response.json();
+    console.log(`Successfully fetched free API data for ${symbol}`);
     return data;
   } catch (error) {
-    console.error('Error in fetchWithFreeAPI:', error);
+    console.error(`Error in fetchWithFreeAPI for ${symbol}:`, error);
     throw error;
   }
 }
@@ -87,7 +91,11 @@ serve(async (req) => {
 
   try {
     const apiKey = Deno.env.get('COINGECKO_API_KEY');
-    console.log('API Key present:', !!apiKey);
+    if (!apiKey) {
+      console.warn('No CoinGecko API key found in environment variables');
+    } else {
+      console.log('CoinGecko API key is configured');
+    }
 
     let requestBody;
     try {
@@ -100,12 +108,15 @@ serve(async (req) => {
     const { limit } = requestBody;
     const cryptoSymbols = ['bitcoin', 'ethereum', 'binancecoin', 'solana', 'ripple'].slice(0, limit || 5);
     
-    console.log(`Fetching data for ${cryptoSymbols.length} cryptocurrencies:`, cryptoSymbols);
+    console.log(`Processing ${cryptoSymbols.length} cryptocurrencies:`, cryptoSymbols);
     
     const results = [];
+    const errors = [];
+
     for (const symbol of cryptoSymbols) {
       try {
         const mappedSymbol = CRYPTO_SYMBOL_MAP[symbol.toLowerCase()] || symbol.toLowerCase();
+        console.log(`Processing ${mappedSymbol} (original: ${symbol})`);
         
         let data;
         if (apiKey) {
@@ -119,11 +130,8 @@ serve(async (req) => {
           data = await fetchWithFreeAPI(mappedSymbol);
         }
 
-        console.log(`Raw response for ${mappedSymbol}:`, data);
-
         if (!data[mappedSymbol]) {
-          console.error(`No data found for ${mappedSymbol} in response`);
-          continue; // Skip this cryptocurrency but continue with others
+          throw new Error(`No data found for ${mappedSymbol} in API response`);
         }
 
         results.push({
@@ -133,16 +141,20 @@ serve(async (req) => {
           price_change_percentage_24h: data[mappedSymbol].usd_24h_change || 0,
           total_volume: data[mappedSymbol].usd_24h_vol || 0,
         });
+
+        console.log(`Successfully processed ${mappedSymbol}`);
       } catch (error) {
-        console.error(`Error fetching data for ${symbol}:`, error);
-        // Continue with other cryptocurrencies even if one fails
+        console.error(`Failed to process ${symbol}:`, error);
+        errors.push({ symbol, error: error.message });
       }
     }
 
     if (results.length === 0) {
+      console.error('No cryptocurrency data could be fetched. Errors:', errors);
       throw new Error('Failed to fetch data for all cryptocurrencies');
     }
 
+    console.log(`Successfully fetched data for ${results.length} cryptocurrencies`);
     return new Response(
       JSON.stringify(results),
       { 
@@ -153,7 +165,7 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in get-crypto-data function:', error);
+    console.error('Fatal error in get-crypto-data function:', error);
     
     return new Response(
       JSON.stringify({ 
