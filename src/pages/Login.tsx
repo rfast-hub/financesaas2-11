@@ -4,6 +4,7 @@ import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         navigate("/dashboard");
+      } else if (event === "USER_DELETED" || event === "SIGNED_OUT") {
+        navigate("/");
       }
     });
 
@@ -43,6 +46,14 @@ const Login = () => {
             providers={[]}
             view="sign_in"
             showLinks={false}
+            onError={(error) => {
+              console.error("Auth error:", error);
+              toast({
+                title: "Authentication Error",
+                description: error.message || "Invalid login credentials. Please check your email and password.",
+                variant: "destructive",
+              });
+            }}
           />
         </div>
       </div>
