@@ -34,7 +34,7 @@ const Login = () => {
             }}
             providers={[]}
             view="sign_in"
-            showLinks={true}
+            showLinks={false}
             localization={{
               variables: {
                 sign_in: {
@@ -42,13 +42,6 @@ const Login = () => {
                   password_label: 'Password',
                   button_label: 'Sign In',
                   loading_button_label: 'Signing in...',
-                },
-                forgotten_password: {
-                  email_label: 'Email address',
-                  button_label: 'Send reset password instructions',
-                  loading_button_label: 'Sending reset instructions...',
-                  link_text: 'Forgot your password?',
-                  confirmation_text: 'Check your email for the password reset link',
                 },
               },
             }}
