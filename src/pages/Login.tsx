@@ -1,20 +1,24 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
-  supabase.auth.onAuthStateChange((event, session) => {
-    if (event === "SIGNED_IN") {
-      navigate("/dashboard");
-    } else if (event === "SIGNED_OUT") {
-      navigate("/login");
-    }
-  });
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session) {
+        navigate("/dashboard");
+      } else if (event === "SIGNED_OUT") {
+        navigate("/");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 flex items-center justify-center p-4">
@@ -52,16 +56,28 @@ const Login = () => {
                   password_label: 'Password',
                   button_label: 'Sign In',
                   loading_button_label: 'Signing in...',
+                  social_provider_text: 'Sign in with {{provider}}',
+                  link_text: 'Already have an account? Sign in',
                 },
               },
             }}
-            onError={(error) => {
-              toast({
-                variant: "destructive",
-                title: "Error signing in",
-                description: "Please check your credentials and try again.",
-              });
-              console.error("Auth error:", error);
+            authOptions={{
+              onError: (error) => {
+                console.error("Auth error:", error);
+                if (error.message.includes("Email not confirmed")) {
+                  toast({
+                    title: "Email Verification Required",
+                    description: "Please check your email and click the verification link before signing in.",
+                    variant: "destructive",
+                  });
+                } else {
+                  toast({
+                    title: "Authentication Error",
+                    description: error.message || "An error occurred during sign in. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              },
             }}
           />
         </div>
