@@ -56,27 +56,7 @@ const Login = () => {
                   password_label: 'Password',
                   button_label: 'Sign In',
                   loading_button_label: 'Signing in...',
-                  social_provider_text: 'Sign in with {{provider}}',
-                  link_text: 'Already have an account? Sign in',
                 },
-              },
-            }}
-            authOptions={{
-              onError: (error) => {
-                console.error("Auth error:", error);
-                if (error.message.includes("Email not confirmed")) {
-                  toast({
-                    title: "Email Verification Required",
-                    description: "Please check your email and click the verification link before signing in.",
-                    variant: "destructive",
-                  });
-                } else {
-                  toast({
-                    title: "Authentication Error",
-                    description: error.message || "An error occurred during sign in. Please try again.",
-                    variant: "destructive",
-                  });
-                }
               },
             }}
           />
