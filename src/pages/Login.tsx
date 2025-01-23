@@ -34,7 +34,7 @@ const Login = () => {
             }}
             providers={[]}
             view="sign_in"
-            showLinks={true}
+            showLinks={false}
             localization={{
               variables: {
                 sign_in: {
