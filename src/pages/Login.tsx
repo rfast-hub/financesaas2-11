@@ -13,7 +13,7 @@ const Login = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_IN" && session) {
         navigate("/dashboard");
-      } else if (event === "USER_DELETED" || event === "SIGNED_OUT") {
+      } else if (event === "SIGNED_OUT") {
         navigate("/");
       }
     });
@@ -42,17 +42,25 @@ const Login = () => {
                   },
                 },
               },
+              style: {
+                button: { background: 'hsl(var(--primary))', color: 'white' },
+                anchor: { color: 'hsl(var(--primary))' },
+              },
             }}
             providers={[]}
             view="sign_in"
             showLinks={false}
-            onError={(error) => {
-              console.error("Auth error:", error);
-              toast({
-                title: "Authentication Error",
-                description: error.message || "Invalid login credentials. Please check your email and password.",
-                variant: "destructive",
-              });
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'Email',
+                  password_label: 'Password',
+                  button_label: 'Sign In',
+                  loading_button_label: 'Signing in...',
+                  social_provider_text: 'Sign in with {{provider}}',
+                  link_text: 'Already have an account? Sign in',
+                },
+              },
             }}
           />
         </div>
