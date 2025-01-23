@@ -48,7 +48,7 @@ const Login = () => {
             }}
             providers={[]}
             view="sign_in"
-            showLinks={false}
+            showLinks={true}
             localization={{
               variables: {
                 sign_in: {
@@ -59,24 +59,14 @@ const Login = () => {
                   social_provider_text: 'Sign in with {{provider}}',
                   link_text: 'Already have an account? Sign in',
                 },
-              },
-            }}
-            authOptions={{
-              onError: (error) => {
-                console.error("Auth error:", error);
-                if (error.message.includes("Email not confirmed")) {
-                  toast({
-                    title: "Email Verification Required",
-                    description: "Please check your email and click the verification link before signing in.",
-                    variant: "destructive",
-                  });
-                } else {
-                  toast({
-                    title: "Authentication Error",
-                    description: error.message || "An error occurred during sign in. Please try again.",
-                    variant: "destructive",
-                  });
-                }
+                forgotten_password: {
+                  email_label: 'Email address',
+                  password_label: 'Your Password',
+                  button_label: 'Send reset password instructions',
+                  loading_button_label: 'Sending reset instructions...',
+                  link_text: 'Forgot your password?',
+                  confirmation_text: 'Check your email for the password reset link',
+                },
               },
             }}
           />
