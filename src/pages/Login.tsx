@@ -52,8 +52,7 @@ const Login = () => {
                   confirmation_text: 'Check your email for the password reset link',
                 },
                 sign_up: {
-                  link_text: "Don't have an account? Sign up",
-                  redirect_url: 'https://signup.cryptotrack.org',
+                  link_text: `<a href="https://signup.cryptotrack.org">Don't have an account? Sign up</a>`,
                 },
               },
             }}
