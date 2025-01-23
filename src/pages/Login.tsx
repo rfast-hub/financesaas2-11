@@ -52,6 +52,41 @@ const Login = () => {
                 },
               },
             }}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: 'hsl(var(--primary))',
+                    brandAccent: 'hsl(var(--primary))',
+                  },
+                },
+              },
+              style: {
+                button: { background: 'hsl(var(--primary))', color: 'white' },
+                anchor: { color: 'hsl(var(--primary))' },
+              },
+            }}
+            providers={[]}
+            view="sign_in"
+            showLinks={true}
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: 'Email',
+                  password_label: 'Password',
+                  button_label: 'Sign In',
+                  loading_button_label: 'Signing in...',
+                },
+                forgotten_password: {
+                  email_label: 'Email address',
+                  button_label: 'Send reset password instructions',
+                  loading_button_label: 'Sending reset instructions...',
+                  link_text: 'Forgot your password?',
+                  confirmation_text: 'Check your email for the password reset link',
+                },
+              },
+            }}
           />
         </div>
       </div>
