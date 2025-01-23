@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Auth } from "@supabase/auth-ui-react";
 import { ThemeSupa } from "@supabase/auth-ui-shared";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -57,7 +56,6 @@ const Login = () => {
                   button_label: 'Sign In',
                   loading_button_label: 'Signing in...',
                   social_provider_text: 'Sign in with {{provider}}',
-                  link_text: 'Already have an account? Sign in',
                 },
                 forgotten_password: {
                   email_label: 'Email address',
