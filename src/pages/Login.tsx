@@ -35,6 +35,7 @@ const Login = () => {
             providers={[]}
             view="sign_in"
             showLinks={true}
+            redirectTo={window.location.origin + '/dashboard'}
             localization={{
               variables: {
                 sign_in: {
@@ -49,6 +50,10 @@ const Login = () => {
                   loading_button_label: 'Sending reset instructions...',
                   link_text: 'Forgot your password?',
                   confirmation_text: 'Check your email for the password reset link',
+                },
+                sign_up: {
+                  link_text: "Don't have an account? Sign up",
+                  redirect_url: 'https://signup.cryptotrack.org',
                 },
               },
             }}
