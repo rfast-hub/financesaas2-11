@@ -50,6 +50,22 @@ const Login = () => {
             providers={[]}
             view="sign_in"
             showLinks={false}
+            onError={(error) => {
+              console.error("Auth error:", error);
+              if (error.message.includes("Email not confirmed")) {
+                toast({
+                  title: "Email Verification Required",
+                  description: "Please check your email and click the verification link before signing in.",
+                  variant: "destructive",
+                });
+              } else {
+                toast({
+                  title: "Authentication Error",
+                  description: error.message || "An error occurred during sign in. Please try again.",
+                  variant: "destructive",
+                });
+              }
+            }}
             localization={{
               variables: {
                 sign_in: {
