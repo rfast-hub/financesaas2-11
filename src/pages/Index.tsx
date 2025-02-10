@@ -1,3 +1,4 @@
+
 import MarketStats from "@/components/MarketStats";
 import CryptoChart from "@/components/CryptoChart";
 import CryptoList from "@/components/CryptoList";
@@ -110,7 +111,12 @@ const Index = () => {
               >
                 Terms and Conditions
               </a>
-              <a href="#" className="hover:text-primary transition-colors">
+              <a 
+                href="https://landing.cryptotrack.org/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-primary transition-colors"
+              >
                 Privacy Policy
               </a>
             </div>
