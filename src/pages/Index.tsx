@@ -1,4 +1,3 @@
-
 import MarketStats from "@/components/MarketStats";
 import CryptoChart from "@/components/CryptoChart";
 import CryptoList from "@/components/CryptoList";
@@ -11,9 +10,12 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
+import { useState } from "react";
+import PrivacyPolicyDialog from "@/components/PrivacyPolicyDialog";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -125,17 +127,20 @@ const Index = () => {
               >
                 Terms and Conditions
               </a>
-              <a 
-                href="https://landing.cryptotrack.org/privacy" 
-                onClick={handlePrivacyClick}
+              <button 
+                onClick={() => setPrivacyPolicyOpen(true)}
                 className="hover:text-primary transition-colors"
               >
                 Privacy Policy
-              </a>
+              </button>
             </div>
           </div>
         </footer>
       </div>
+      <PrivacyPolicyDialog 
+        open={privacyPolicyOpen} 
+        onOpenChange={setPrivacyPolicyOpen}
+      />
     </div>
   );
 };
