@@ -9,30 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      legal_documents: {
-        Row: {
-          content: string
-          created_at: string | null
-          id: string
-          type: string
-          updated_at: string | null
-        }
-        Insert: {
-          content: string
-          created_at?: string | null
-          id?: string
-          type: string
-          updated_at?: string | null
-        }
-        Update: {
-          content?: string
-          created_at?: string | null
-          id?: string
-          type?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       price_alerts: {
         Row: {
           ai_generated: boolean | null

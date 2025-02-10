@@ -1,3 +1,4 @@
+
 import MarketStats from "@/components/MarketStats";
 import CryptoChart from "@/components/CryptoChart";
 import CryptoList from "@/components/CryptoList";
@@ -10,12 +11,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
-import { useState } from "react";
-import PrivacyPolicyDialog from "@/components/PrivacyPolicyDialog";
 
 const Index = () => {
   const navigate = useNavigate();
-  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -36,20 +34,6 @@ const Index = () => {
 
   const handleManageSubscription = () => {
     window.open('https://billing.stripe.com/p/login/aEUeX67rfdiYeruaEE', '_blank');
-  };
-
-  const handlePrivacyClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const win = window.open('https://landing.cryptotrack.org/privacy', '_blank');
-    if (!win) {
-      toast({
-        title: "Popup Blocked",
-        description: "Please allow popups to view the Privacy Policy, or contact support for a copy.",
-        variant: "destructive",
-      });
-    } else {
-      win.focus();
-    }
   };
 
   return (
@@ -127,20 +111,18 @@ const Index = () => {
               >
                 Terms and Conditions
               </a>
-              <button 
-                onClick={() => setPrivacyPolicyOpen(true)}
+              <a 
+                href="https://landing.cryptotrack.org/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer" 
                 className="hover:text-primary transition-colors"
               >
                 Privacy Policy
-              </button>
+              </a>
             </div>
           </div>
         </footer>
       </div>
-      <PrivacyPolicyDialog 
-        open={privacyPolicyOpen} 
-        onOpenChange={setPrivacyPolicyOpen}
-      />
     </div>
   );
 };
