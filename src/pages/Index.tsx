@@ -36,6 +36,20 @@ const Index = () => {
     window.open('https://billing.stripe.com/p/login/aEUeX67rfdiYeruaEE', '_blank');
   };
 
+  const handlePrivacyClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const win = window.open('https://landing.cryptotrack.org/privacy', '_blank');
+    if (!win) {
+      toast({
+        title: "Popup Blocked",
+        description: "Please allow popups to view the Privacy Policy, or contact support for a copy.",
+        variant: "destructive",
+      });
+    } else {
+      win.focus();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -113,8 +127,7 @@ const Index = () => {
               </a>
               <a 
                 href="https://landing.cryptotrack.org/privacy" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+                onClick={handlePrivacyClick}
                 className="hover:text-primary transition-colors"
               >
                 Privacy Policy
