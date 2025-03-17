@@ -104,7 +104,7 @@ const Index = () => {
             </div>
             <div className="flex gap-6">
               <a 
-                href="https://landing.cryptotrack.org/terms" 
+                href="https://terms.cryptotrack.org" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="hover:text-primary transition-colors"
